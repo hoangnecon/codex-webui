@@ -176,7 +176,17 @@ if ($('#composer-form')) {
     if (typeof value === 'string') return value;
     if (Array.isArray(value)) return value.map(extractText).filter(Boolean).join('\n');
     if (!value || typeof value !== 'object') return '';
-    return value.text || value.content || value.message || value.outputText || value.output_text || extractText(value.input) || '';
+    if (typeof value.text === 'string') return value.text;
+    if (typeof value.message === 'string') return value.message;
+    if (typeof value.outputText === 'string') return value.outputText;
+    if (typeof value.output_text === 'string') return value.output_text;
+    if (value.content !== undefined) return extractText(value.content);
+    if (value.input !== undefined) return extractText(value.input);
+    if (value.type === 'image') return '[Image]';
+    if (value.type === 'localImage') return `[Local image: ${value.path || 'attached'}]`;
+    if (value.type === 'skill') return `[Skill: ${value.name || 'attached'}]`;
+    if (value.type === 'mention') return `@${value.name || 'mention'}`;
+    return '';
   }
 
   function renderHistory(thread) {

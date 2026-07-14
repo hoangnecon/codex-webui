@@ -47,3 +47,8 @@ test('UI restores the selected thread and derives activity from durable thread s
   assert.match(server, /activeThreads = new Map/);
   assert.match(server, /rollout\.\*empty/);
 });
+
+test('history renderer recursively extracts structured user-message content', () => {
+  assert.match(app, /return extractText\(value\.content\)/);
+  assert.doesNotMatch(app, /value\.text \|\| value\.content/);
+});
