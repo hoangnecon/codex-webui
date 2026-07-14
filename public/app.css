@@ -63,6 +63,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 @keyframes pulse { 50% { opacity: .35; transform: scale(.82); } }
 .status-pill { display: inline-flex; align-items: center; gap: 7px; padding: 6px 9px; color: var(--muted); background: var(--panel); border: 1px solid var(--border); border-radius: 999px; font-size: 11px; }
 .mode-pill { padding: 6px 9px; color: #9bd9bd; background: #14241d; border: 1px solid #294b3c; border-radius: 999px; font-size: 10px; }
+.mode-pill.full-access { color: #ffd39b; background: #2b1f12; border-color: #69471f; }
 .empty-state { align-self: center; justify-self: center; width: min(680px, calc(100% - 36px)); padding: 30px 0 90px; text-align: center; }
 .orb { display: grid; place-items: center; width: 74px; height: 74px; margin: 0 auto 25px; border: 1px solid #3a5147; border-radius: 24px; color: var(--green); background: radial-gradient(circle at 35% 25%, #263c33, #121815 68%); box-shadow: 0 20px 70px rgba(55, 170, 119, .13); font-size: 27px; font-weight: 800; }
 .eyebrow { color: var(--green); font-size: 10px; font-weight: 750; letter-spacing: .18em; }

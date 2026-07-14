@@ -32,12 +32,10 @@ test('workspaces are constrained to the configured workspace root', () => {
   assert.match(server, /Workspace is outside the allowed root/);
 });
 
-test('auto-approval remains limited to the writable workspace sandbox', () => {
+test('full-access mode permits automatic Git metadata writes', () => {
   assert.match(server, /approvalPolicy: 'never'/);
-  assert.match(server, /type: 'workspaceWrite'/);
-  assert.match(server, /writableRoots: \[WORKSPACE_ROOT\]/);
-  assert.match(server, /networkAccess: true/);
-  assert.doesNotMatch(server, /sandbox: 'danger-full-access'/);
+  assert.match(server, /type: 'dangerFullAccess'/);
+  assert.match(server, /sandbox: 'danger-full-access'/);
 });
 
 test('UI keeps approval controls visible and does not load third-party scripts', () => {

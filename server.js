@@ -26,7 +26,7 @@ const WORKSPACE_ROOT = fs.realpathSync(process.env.WORKSPACE_ROOT || '/home/eric
 const PASSWORD_SALT = process.env.PASSWORD_SALT || '';
 const PASSWORD_HASH = process.env.PASSWORD_HASH || '';
 const SESSION_HOURS = Math.min(168, Math.max(1, Number(process.env.SESSION_HOURS || 24)));
-const EXECUTION_MODE = 'auto-workspace';
+const EXECUTION_MODE = 'full-access';
 const sessions = new Map();
 const loginAttempts = new Map();
 const sseClients = new Set();
@@ -315,7 +315,7 @@ async function api(req, res, pathname) {
       model: body.model || null,
       approvalPolicy: 'never',
       approvalsReviewer: 'user',
-      sandbox: 'workspace-write',
+      sandbox: 'danger-full-access',
       personality: body.personality || null,
     });
     return json(res, 201, result);
@@ -352,9 +352,7 @@ async function api(req, res, pathname) {
       approvalPolicy: 'never',
       approvalsReviewer: 'user',
       sandboxPolicy: {
-        type: 'workspaceWrite',
-        writableRoots: [WORKSPACE_ROOT],
-        networkAccess: true,
+        type: 'dangerFullAccess',
       },
       effort: body.effort || null,
     });
