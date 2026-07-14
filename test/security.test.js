@@ -59,3 +59,12 @@ test('long conversations remain scrollable and provide a jump-to-latest control'
   assert.match(app, /nearConversationBottom/);
   assert.match(app, /followOutput/);
 });
+
+test('live activity panel renders supported progress without private reasoning text', () => {
+  assert.match(html, /id="activity-rail"/);
+  assert.match(app, /item\/reasoning\/summaryTextDelta/);
+  assert.match(app, /turn\/plan\/updated/);
+  assert.match(app, /item\/commandExecution\/outputDelta/);
+  assert.match(app, /item\/fileChange\/patchUpdated/);
+  assert.doesNotMatch(app, /method === 'item\/reasoning\/textDelta'/);
+});

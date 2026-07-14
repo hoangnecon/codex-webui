@@ -45,7 +45,105 @@ if ($('#composer-form')) {
     threads: [],
     activeThreadIds: new Set(),
     followOutput: true,
+    activityEntries: new Map(),
   };
+
+  function activityTime() {
+    return new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+  }
+
+  function resetActivity() {
+    state.activityEntries.clear();
+    $('#activity-feed').replaceChildren();
+    const empty = document.createElement('p');
+    empty.className = 'activity-empty';
+    empty.textContent = 'Activity will appear here as Codex reasons, uses tools, edits files, and runs checks.';
+    $('#activity-feed').append(empty);
+    $('#plan-panel').classList.add('hidden');
+    $('#plan-list').replaceChildren();
+    $('#token-usage').textContent = '';
+  }
+
+  function ensureActivityEntry(id, title, kind = '') {
+    const key = id || `${kind}-${Date.now()}-${Math.random()}`;
+    let entry = state.activityEntries.get(key);
+    if (entry) return entry;
+    $('#activity-feed .activity-empty')?.remove();
+    const node = document.createElement('article');
+    node.className = `activity-entry ${kind} running`;
+    const header = document.createElement('header');
+    const heading = document.createElement('strong');
+    heading.textContent = title;
+    const time = document.createElement('time');
+    time.textContent = activityTime();
+    const detail = document.createElement(kind === 'reasoning' ? 'p' : 'pre');
+    header.append(heading, time);
+    node.append(header, detail);
+    $('#activity-feed').append(node);
+    entry = { node, heading, detail };
+    state.activityEntries.set(key, entry);
+    $('#activity-feed').scrollTop = $('#activity-feed').scrollHeight;
+    return entry;
+  }
+
+  function updateActivity(id, { title, detail, append, kind = '', status = 'running' }) {
+    const entry = ensureActivityEntry(id, title || 'Working', kind);
+    if (title) entry.heading.textContent = title;
+    if (detail !== undefined) entry.detail.textContent = String(detail).slice(-12000);
+    if (append) entry.detail.textContent = `${entry.detail.textContent}${append}`.slice(-12000);
+    entry.node.classList.remove('running', 'done', 'error');
+    entry.node.classList.add(status);
+    $('#activity-feed').scrollTop = $('#activity-feed').scrollHeight;
+  }
+
+  function renderPlan(plan = [], explanation = '') {
+    if (!plan.length) return;
+    $('#plan-panel').classList.remove('hidden');
+    $('#plan-explanation').textContent = explanation || '';
+    const list = $('#plan-list');
+    list.replaceChildren();
+    for (const item of plan) {
+      const row = document.createElement('li');
+      row.className = item.status || 'pending';
+      row.textContent = item.step || '';
+      list.append(row);
+    }
+  }
+
+  function describeChanges(changes = []) {
+    return changes.map((change) => {
+      const file = change.path || change.filePath || change.file || 'file';
+      const action = change.type || change.kind || 'updated';
+      return `${action}: ${file}`;
+    }).join('\n');
+  }
+
+  function renderActivityItem(item, completed = false) {
+    if (!item?.id) return;
+    const status = completed ? (item.status === 'failed' ? 'error' : 'done') : 'running';
+    if (item.type === 'reasoning') {
+      updateActivity(item.id, { title: 'Reasoning summary', detail: (item.summary || []).join('\n'), kind: 'reasoning', status });
+    } else if (item.type === 'plan') {
+      updateActivity(item.id, { title: 'Planning work', detail: item.text || '', kind: 'reasoning', status });
+    } else if (item.type === 'commandExecution') {
+      updateActivity(item.id, { title: item.command || 'Running command', detail: item.aggregatedOutput || '', status });
+    } else if (item.type === 'fileChange') {
+      updateActivity(item.id, { title: 'Editing files', detail: describeChanges(item.changes), status });
+    } else if (item.type === 'mcpToolCall') {
+      updateActivity(item.id, { title: `${item.server || 'MCP'} · ${item.tool || 'tool'}`, detail: JSON.stringify(item.arguments || {}, null, 2), status });
+    } else if (item.type === 'webSearch') {
+      updateActivity(item.id, { title: 'Searching the web', detail: item.query || '', status });
+    } else if (!['agentMessage', 'userMessage'].includes(item.type)) {
+      updateActivity(item.id, { title: String(item.type || 'Working').replace(/([a-z])([A-Z])/g, '$1 $2'), detail: '', status });
+    }
+  }
+
+  function renderActivityHistory(thread) {
+    resetActivity();
+    const latestTurn = (thread.turns || []).at(-1);
+    if (!latestTurn) return;
+    for (const item of latestTurn.items || []) renderActivityItem(item, item.status !== 'inProgress');
+  }
 
   function nearConversationBottom() {
     const conversation = $('#conversation');
@@ -86,6 +184,13 @@ if ($('#composer-form')) {
     if (currentRunning) pill.lastChild.textContent = ' Working in this chat';
     else if (backgroundCount) pill.lastChild.textContent = ` ${backgroundCount} running in background`;
     else pill.lastChild.textContent = ' Ready';
+    $('.workspace').classList.toggle('has-activity', state.activeThreadIds.size > 0);
+  }
+
+  function setActivityOpen(open) {
+    $('.workspace').classList.toggle('activity-open', open);
+    $('#activity-toggle').classList.toggle('active', open);
+    localStorage.setItem('codex-webui-activity-panel', open ? 'open' : 'closed');
   }
 
   function setRunning(running) {
@@ -97,6 +202,8 @@ if ($('#composer-form')) {
     updateRunStatus();
     $('#interrupt').classList.toggle('hidden', !running);
     $('.send-button').disabled = running;
+    $('.workspace').classList.toggle('has-activity', state.activeThreadIds.size > 0);
+    $('#activity-state-label').textContent = running ? 'Working now' : 'Waiting for work';
   }
 
   function syncThreadStatus(thread) {
@@ -236,6 +343,7 @@ if ($('#composer-form')) {
       $('#thread-path').textContent = state.cwd || 'Local workspace';
       $('#active-workspace').textContent = state.cwd || '';
       renderHistory(thread);
+      renderActivityHistory(thread);
       syncThreadStatus(thread);
       const activeTurn = [...(thread.turns || [])].reverse().find((turn) => turn.status === 'inProgress');
       state.turnId = activeTurn?.id || null;
@@ -254,6 +362,7 @@ if ($('#composer-form')) {
     state.streamingNode = null;
     setRunning(false);
     $('#conversation').replaceChildren();
+    resetActivity();
     $('#conversation').classList.add('hidden');
     $('#empty-state').classList.remove('hidden');
     $('#thread-title').textContent = 'New thread';
@@ -371,16 +480,20 @@ if ($('#composer-form')) {
     if (method === 'turn/started') {
       state.turnId = params.turn?.id || params.turnId;
       setRunning(true);
+      resetActivity();
+      updateActivity(`turn-${state.turnId}`, { title: 'Turn started', detail: 'Codex is analyzing your request.', kind: 'reasoning', status: 'running' });
     } else if (method === 'item/agentMessage/delta') {
       if (!state.streamingNode) addMessage('assistant', '', true);
       state.streamingNode.textContent += params.delta || '';
       if (state.followOutput) scrollToLatest();
     } else if (method === 'item/started') {
       const item = params.item || {};
+      renderActivityItem(item, false);
       const type = String(item.type || 'work').replace(/([a-z])([A-Z])/g, '$1 $2');
       if (!String(item.type || '').toLowerCase().includes('agentmessage')) addEvent(`Started ${type}`);
     } else if (method === 'item/completed') {
       const item = params.item || {};
+      renderActivityItem(item, true);
       const type = String(item.type || '').toLowerCase();
       if ((type.includes('agentmessage') || type.includes('assistant')) && !state.streamingNode) {
         const text = extractText(item);
@@ -388,12 +501,29 @@ if ($('#composer-form')) {
       }
       if (type.includes('command')) addEvent('Command completed', item.exitCode === undefined ? '' : `exit ${item.exitCode}`);
     } else if (method === 'turn/completed') {
+      updateActivity(`turn-${state.turnId || params.turn?.id || params.turnId}`, { title: 'Turn completed', detail: '', status: 'done' });
       setRunning(false);
       state.streamingNode = null;
       state.turnId = null;
       loadThreads();
     } else if (method === 'error') {
       toast(params.error?.message || params.message || 'Codex reported an error', 'error');
+    } else if (method === 'item/reasoning/summaryTextDelta') {
+      updateActivity(params.itemId, { title: 'Reasoning summary', append: params.delta || '', kind: 'reasoning', status: 'running' });
+    } else if (method === 'item/plan/delta') {
+      updateActivity(params.itemId, { title: 'Building a plan', append: params.delta || '', kind: 'reasoning', status: 'running' });
+    } else if (method === 'turn/plan/updated') {
+      renderPlan(params.plan || [], params.explanation || '');
+    } else if (method === 'item/commandExecution/outputDelta') {
+      updateActivity(params.itemId, { title: 'Command output', append: params.delta || '', status: 'running' });
+    } else if (method === 'item/fileChange/patchUpdated') {
+      updateActivity(params.itemId, { title: 'Editing files', detail: describeChanges(params.changes || []), status: 'running' });
+    } else if (method === 'turn/diff/updated') {
+      updateActivity(`diff-${params.turnId}`, { title: 'Workspace diff updated', detail: params.diff || '', status: 'running' });
+    } else if (method === 'thread/tokenUsage/updated') {
+      const usage = params.tokenUsage || {};
+      const total = usage.total?.totalTokens || usage.totalTokens || usage.total_tokens;
+      if (total) $('#token-usage').textContent = `${Number(total).toLocaleString()} tokens used`;
     }
   }
 
@@ -433,6 +563,7 @@ if ($('#composer-form')) {
       setConnected(true);
       connectEvents();
       await loadThreads();
+      setActivityOpen(localStorage.getItem('codex-webui-activity-panel') !== 'closed');
       const savedThread = localStorage.getItem('codex-webui-active-thread');
       const resumable = state.threads.find((thread) => thread.id === savedThread)
         || state.threads.find((thread) => state.activeThreadIds.has(thread.id));
@@ -466,6 +597,10 @@ if ($('#composer-form')) {
     updateJumpButton();
   }, { passive: true });
   $('#jump-latest').addEventListener('click', () => scrollToLatest('smooth'));
+  $('#activity-toggle').addEventListener('click', () => {
+    setActivityOpen(!$('.workspace').classList.contains('activity-open'));
+  });
+  $('#close-activity').addEventListener('click', () => setActivityOpen(false));
   $('#workspace-select').addEventListener('change', (event) => {
     state.cwd = event.target.value;
     $('#thread-path').textContent = state.cwd;

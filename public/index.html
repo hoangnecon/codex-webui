@@ -32,6 +32,7 @@
         </div>
         <div class="top-actions">
           <span class="status-pill" id="run-status"><i></i> Ready</span>
+          <button class="activity-toggle" id="activity-toggle" type="button"><span class="activity-pulse"></span> Activity</button>
           <button class="danger subtle hidden" id="interrupt">Stop</button>
         </div>
       </header>
@@ -54,6 +55,25 @@
 
       <section class="conversation hidden" id="conversation" aria-live="polite"></section>
       <button class="jump-latest hidden" id="jump-latest" type="button">↓ Jump to latest</button>
+
+      <aside class="activity-rail" id="activity-rail" aria-label="Codex activity">
+        <header class="activity-header">
+          <div><p class="eyebrow">LIVE SESSION</p><strong>Codex activity</strong></div>
+          <button class="icon-button" id="close-activity" type="button" aria-label="Close activity panel">×</button>
+        </header>
+        <div class="activity-state"><span class="activity-pulse"></span><strong id="activity-state-label">Waiting for work</strong><span id="token-usage"></span></div>
+        <section class="plan-panel hidden" id="plan-panel">
+          <h2>Plan</h2>
+          <p id="plan-explanation"></p>
+          <ol id="plan-list"></ol>
+        </section>
+        <section class="activity-feed-wrap">
+          <h2>Timeline</h2>
+          <div class="activity-feed" id="activity-feed">
+            <p class="activity-empty">Activity will appear here as Codex reasons, uses tools, edits files, and runs checks.</p>
+          </div>
+        </section>
+      </aside>
 
       <section class="approval-drawer hidden" id="approval-drawer" aria-live="assertive">
         <div class="approval-icon">!</div>
