@@ -44,7 +44,26 @@ if ($('#composer-form')) {
     pendingApproval: null,
     threads: [],
     activeThreadIds: new Set(),
+    followOutput: true,
   };
+
+  function nearConversationBottom() {
+    const conversation = $('#conversation');
+    return conversation.scrollHeight - conversation.scrollTop - conversation.clientHeight < 100;
+  }
+
+  function updateJumpButton() {
+    $('#jump-latest').classList.toggle('hidden', nearConversationBottom() || $('#conversation').classList.contains('hidden'));
+  }
+
+  function scrollToLatest(behavior = 'auto') {
+    state.followOutput = true;
+    requestAnimationFrame(() => {
+      const conversation = $('#conversation');
+      conversation.scrollTo({ top: conversation.scrollHeight, behavior });
+      requestAnimationFrame(updateJumpButton);
+    });
+  }
 
   function toast(message, type = '') {
     const node = document.createElement('div');
@@ -156,7 +175,7 @@ if ($('#composer-form')) {
     wrapper.append(label, body);
     article.append(avatar, wrapper);
     $('#conversation').append(article);
-    $('#conversation').scrollTop = $('#conversation').scrollHeight;
+    if (state.followOutput) scrollToLatest();
     if (streaming) state.streamingNode = body;
     return body;
   }
@@ -169,7 +188,7 @@ if ($('#composer-form')) {
     card.append(strong);
     if (detail) card.append(document.createTextNode(` · ${detail}`));
     $('#conversation').append(card);
-    $('#conversation').scrollTop = $('#conversation').scrollHeight;
+    if (state.followOutput) scrollToLatest();
   }
 
   function extractText(value) {
@@ -203,6 +222,7 @@ if ($('#composer-form')) {
       }
     }
     if (!conversation.children.length) addEvent('Thread opened', 'Earlier command details may not be retained by Codex');
+    scrollToLatest();
   }
 
   async function openThread(id) {
@@ -265,6 +285,8 @@ if ($('#composer-form')) {
     try {
       const threadId = await ensureThread();
       addMessage('user', cleaned);
+      state.followOutput = true;
+      scrollToLatest();
       if ($('#thread-title').textContent === 'New thread') $('#thread-title').textContent = cleaned.slice(0, 70);
       setRunning(true);
       state.streamingNode = null;
@@ -352,7 +374,7 @@ if ($('#composer-form')) {
     } else if (method === 'item/agentMessage/delta') {
       if (!state.streamingNode) addMessage('assistant', '', true);
       state.streamingNode.textContent += params.delta || '';
-      $('#conversation').scrollTop = $('#conversation').scrollHeight;
+      if (state.followOutput) scrollToLatest();
     } else if (method === 'item/started') {
       const item = params.item || {};
       const type = String(item.type || 'work').replace(/([a-z])([A-Z])/g, '$1 $2');
@@ -439,6 +461,11 @@ if ($('#composer-form')) {
     event.target.style.height = 'auto';
     event.target.style.height = `${Math.min(event.target.scrollHeight, 190)}px`;
   });
+  $('#conversation').addEventListener('scroll', () => {
+    state.followOutput = nearConversationBottom();
+    updateJumpButton();
+  }, { passive: true });
+  $('#jump-latest').addEventListener('click', () => scrollToLatest('smooth'));
   $('#workspace-select').addEventListener('change', (event) => {
     state.cwd = event.target.value;
     $('#thread-path').textContent = state.cwd;

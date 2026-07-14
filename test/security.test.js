@@ -52,3 +52,10 @@ test('history renderer recursively extracts structured user-message content', ()
   assert.match(app, /return extractText\(value\.content\)/);
   assert.doesNotMatch(app, /value\.text \|\| value\.content/);
 });
+
+test('long conversations remain scrollable and provide a jump-to-latest control', () => {
+  assert.match(html, /id="jump-latest"/);
+  assert.match(app, /function scrollToLatest/);
+  assert.match(app, /nearConversationBottom/);
+  assert.match(app, /followOutput/);
+});
