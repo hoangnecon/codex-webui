@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Codex WebUI · Sign in</title>
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body class="login-page">
+  <main class="login-card">
+    <div class="brand-mark" aria-hidden="true">C</div>
+    <p class="eyebrow">PRIVATE WORKSPACE</p>
+    <h1>Codex, from anywhere.</h1>
+    <p class="muted">A private bridge to the Codex instance running on your laptop.</p>
+    <form id="login-form">
+      <label for="password">Access password</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" autofocus required>
+      <button class="primary wide" type="submit">Open workspace</button>
+      <p id="login-error" class="error" role="alert"></p>
+    </form>
+    <p class="secure-note"><span>●</span> Available only on your Tailscale network</p>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>

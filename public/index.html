@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Codex WebUI</title>
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar" id="sidebar">
+      <header class="brand-row">
+        <div class="brand-mark small">C</div>
+        <div><strong>Codex</strong><span>Private WebUI</span></div>
+        <button class="icon-button mobile-only" id="close-sidebar" aria-label="Close sidebar">×</button>
+      </header>
+      <button class="new-thread" id="new-thread">＋ New thread</button>
+      <div class="thread-heading"><span>RECENT THREADS</span><button class="icon-button" id="refresh-threads" title="Refresh">↻</button></div>
+      <nav class="thread-list" id="thread-list" aria-label="Conversations"></nav>
+      <footer class="sidebar-footer">
+        <div class="connection"><i id="connection-dot"></i><span id="connection-label">Connecting</span></div>
+        <button class="text-button" id="logout">Sign out</button>
+      </footer>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <button class="icon-button mobile-only" id="open-sidebar" aria-label="Open sidebar">☰</button>
+        <div class="thread-meta">
+          <strong id="thread-title">New thread</strong>
+          <span id="thread-path">Choose a workspace to begin</span>
+        </div>
+        <div class="top-actions">
+          <span class="status-pill" id="run-status"><i></i> Ready</span>
+          <button class="danger subtle hidden" id="interrupt">Stop</button>
+        </div>
+      </header>
+
+      <section class="empty-state" id="empty-state">
+        <div class="orb">C</div>
+        <p class="eyebrow">LOCAL CODEX · REMOTE COMFORT</p>
+        <h1>What should we work on?</h1>
+        <p>Choose a project, then ask Codex to inspect, build, test, or explain anything on your laptop.</p>
+        <label class="workspace-picker">
+          <span>Working folder</span>
+          <select id="workspace-select"></select>
+        </label>
+        <div class="suggestions">
+          <button data-prompt="Explore this repository and explain the overall architecture.">Explore this repository</button>
+          <button data-prompt="Review the current git status and summarize recent work. Do not modify anything.">Summarize recent work</button>
+          <button data-prompt="Run the available checks and report any failures. Do not modify code yet.">Check project health</button>
+        </div>
+      </section>
+
+      <section class="conversation hidden" id="conversation" aria-live="polite"></section>
+
+      <section class="approval-drawer hidden" id="approval-drawer" aria-live="assertive">
+        <div class="approval-icon">!</div>
+        <div class="approval-copy">
+          <strong id="approval-title">Approval required</strong>
+          <p id="approval-summary"></p>
+          <details><summary>View full request</summary><pre id="approval-details"></pre></details>
+        </div>
+        <div class="approval-actions">
+          <button class="danger" data-decision="decline">Deny</button>
+          <button class="secondary" data-decision="accept">Allow once</button>
+          <button class="primary" data-decision="acceptForSession">Allow for session</button>
+        </div>
+      </section>
+
+      <footer class="composer-wrap">
+        <form class="composer" id="composer-form">
+          <textarea id="message" rows="1" maxlength="50000" placeholder="Message Codex…" required></textarea>
+          <div class="composer-footer">
+            <div class="composer-settings">
+              <select id="effort" aria-label="Reasoning effort">
+                <option value="">Default reasoning</option>
+                <option value="low">Low reasoning</option>
+                <option value="medium">Medium reasoning</option>
+                <option value="high">High reasoning</option>
+                <option value="xhigh">Extra high reasoning</option>
+              </select>
+              <span id="active-workspace"></span>
+            </div>
+            <button class="send-button" type="submit" aria-label="Send">↑</button>
+          </div>
+        </form>
+        <p class="composer-note">Commands and file changes still require approval when Codex requests it.</p>
+      </footer>
+    </main>
+  </div>
+  <div class="toast-region" id="toasts" aria-live="polite"></div>
+  <script src="/app.js"></script>
+</body>
+</html>

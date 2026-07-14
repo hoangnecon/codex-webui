@@ -1,0 +1,15 @@
+{
+  "name": "codex-webui",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Private Tailscale browser interface for a local Codex App Server",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js && node --check public/app.js",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
