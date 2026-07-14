@@ -43,6 +43,7 @@ if ($('#composer-form')) {
     streamingNode: null,
     pendingApproval: null,
     threads: [],
+    activeThreadIds: new Set(),
   };
 
   function toast(message, type = '') {
@@ -58,12 +59,30 @@ if ($('#composer-form')) {
     $('#connection-label').textContent = label;
   }
 
+  function updateRunStatus() {
+    const currentRunning = state.threadId && state.activeThreadIds.has(state.threadId);
+    const backgroundCount = [...state.activeThreadIds].filter((id) => id !== state.threadId).length;
+    const pill = $('#run-status');
+    pill.classList.toggle('online', state.activeThreadIds.size > 0);
+    if (currentRunning) pill.lastChild.textContent = ' Working in this chat';
+    else if (backgroundCount) pill.lastChild.textContent = ` ${backgroundCount} running in background`;
+    else pill.lastChild.textContent = ' Ready';
+  }
+
   function setRunning(running) {
     state.running = running;
-    $('#run-status').classList.toggle('online', running);
-    $('#run-status').lastChild.textContent = running ? ' Working' : ' Ready';
+    if (state.threadId) {
+      if (running) state.activeThreadIds.add(state.threadId);
+      else state.activeThreadIds.delete(state.threadId);
+    }
+    updateRunStatus();
     $('#interrupt').classList.toggle('hidden', !running);
     $('.send-button').disabled = running;
+  }
+
+  function syncThreadStatus(thread) {
+    const type = thread?.status?.type || thread?.status;
+    if (type === 'active') state.activeThreadIds.add(thread.id);
   }
 
   function threadTitle(thread) {
@@ -91,6 +110,12 @@ if ($('#composer-form')) {
       button.className = `thread-item${thread.id === state.threadId ? ' active' : ''}`;
       const title = document.createElement('strong');
       title.textContent = threadTitle(thread);
+      if (state.activeThreadIds.has(thread.id)) {
+        const activity = document.createElement('i');
+        activity.className = 'thread-activity';
+        activity.title = 'Codex is working in this chat';
+        title.append(activity);
+      }
       const meta = document.createElement('span');
       meta.textContent = formatDate(thread.updatedAt || thread.updated_at || thread.createdAt || thread.created_at) || thread.cwd || '';
       button.append(title, meta);
@@ -101,9 +126,13 @@ if ($('#composer-form')) {
 
   async function loadThreads() {
     try {
-      const result = await request('/api/threads');
+      const [result, activity] = await Promise.all([request('/api/threads'), request('/api/activity')]);
       state.threads = result.data || result.threads || result.items || [];
+      state.activeThreadIds.clear();
+      for (const active of activity.activeThreads || []) state.activeThreadIds.add(active.threadId);
+      state.threads.forEach(syncThreadStatus);
       renderThreads();
+      updateRunStatus();
     } catch (error) {
       toast(error.message, 'error');
     }
@@ -171,11 +200,16 @@ if ($('#composer-form')) {
       const result = await request(`/api/threads/${encodeURIComponent(id)}`);
       const thread = result.thread || result;
       state.threadId = thread.id || id;
+      localStorage.setItem('codex-webui-active-thread', state.threadId);
       state.cwd = thread.cwd || state.cwd;
       $('#thread-title').textContent = threadTitle(thread);
       $('#thread-path').textContent = state.cwd || 'Local workspace';
       $('#active-workspace').textContent = state.cwd || '';
       renderHistory(thread);
+      syncThreadStatus(thread);
+      const activeTurn = [...(thread.turns || [])].reverse().find((turn) => turn.status === 'inProgress');
+      state.turnId = activeTurn?.id || null;
+      setRunning(thread.status?.type === 'active' || Boolean(activeTurn));
       renderThreads();
       $('#sidebar').classList.remove('open');
     } catch (error) {
@@ -185,6 +219,7 @@ if ($('#composer-form')) {
 
   function newThread() {
     state.threadId = null;
+    localStorage.removeItem('codex-webui-active-thread');
     state.turnId = null;
     state.streamingNode = null;
     setRunning(false);
@@ -209,6 +244,7 @@ if ($('#composer-form')) {
     const thread = result.thread || result;
     state.threadId = thread.id;
     if (!state.threadId) throw new Error('Codex did not return a thread ID');
+    localStorage.setItem('codex-webui-active-thread', state.threadId);
     $('#thread-path').textContent = state.cwd;
     return state.threadId;
   }
@@ -275,6 +311,30 @@ if ($('#composer-form')) {
     const method = message.method || '';
     const params = message.params || {};
     const eventThreadId = params.threadId || params.thread?.id || params.turn?.threadId;
+    if (method === 'thread/status/changed' && params.threadId) {
+      if (params.status?.type === 'active') state.activeThreadIds.add(params.threadId);
+      else state.activeThreadIds.delete(params.threadId);
+      const listed = state.threads.find((thread) => thread.id === params.threadId);
+      if (listed) listed.status = params.status;
+      renderThreads();
+      updateRunStatus();
+      if (params.threadId === state.threadId) {
+        const running = params.status?.type === 'active';
+        state.running = running;
+        $('#interrupt').classList.toggle('hidden', !running);
+        $('.send-button').disabled = running;
+      }
+    }
+    if (method === 'turn/started' && eventThreadId) {
+      state.activeThreadIds.add(eventThreadId);
+      renderThreads();
+      updateRunStatus();
+    }
+    if (method === 'turn/completed' && eventThreadId) {
+      state.activeThreadIds.delete(eventThreadId);
+      renderThreads();
+      updateRunStatus();
+    }
     if (eventThreadId && state.threadId && eventThreadId !== state.threadId) return;
     if (method === 'turn/started') {
       state.turnId = params.turn?.id || params.turnId;
@@ -312,6 +372,9 @@ if ($('#composer-form')) {
     source.onmessage = ({ data }) => {
       const payload = JSON.parse(data);
       if (payload.type === 'connected') {
+        state.activeThreadIds = new Set((payload.activeThreads || []).map((active) => active.threadId));
+        renderThreads();
+        updateRunStatus();
         for (const pending of payload.pendingRequests || []) showApproval(pending);
       } else if (payload.type === 'server_request') showApproval(payload.request);
       else if (payload.type === 'codex_event') handleCodexEvent(payload.event);
@@ -338,6 +401,10 @@ if ($('#composer-form')) {
       setConnected(true);
       connectEvents();
       await loadThreads();
+      const savedThread = localStorage.getItem('codex-webui-active-thread');
+      const resumable = state.threads.find((thread) => thread.id === savedThread)
+        || state.threads.find((thread) => state.activeThreadIds.has(thread.id));
+      if (resumable) await openThread(resumable.id);
     } catch (error) {
       setConnected(false, 'Connection failed');
       toast(error.message, 'error');

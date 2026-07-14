@@ -8,6 +8,7 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const server = fs.readFileSync(path.join(root, 'server.js'), 'utf8');
 const html = fs.readFileSync(path.join(root, 'public/index.html'), 'utf8');
+const app = fs.readFileSync(path.join(root, 'public/app.js'), 'utf8');
 
 test('server binds to an explicitly configured host and never exposes App Server directly', () => {
   assert.match(server, /server\.listen\(PORT, HOST/);
@@ -35,4 +36,14 @@ test('UI keeps approval controls visible and does not load third-party scripts',
   assert.match(html, /id="approval-drawer"/);
   assert.match(html, /data-decision="decline"/);
   assert.doesNotMatch(html, /<script[^>]+https?:/);
+});
+
+test('UI restores the selected thread and derives activity from durable thread status', () => {
+  assert.match(app, /localStorage\.setItem\('codex-webui-active-thread'/);
+  assert.match(app, /thread\/status\/changed/);
+  assert.match(app, /status\?\.type === 'active'/);
+  assert.match(app, /running in background/);
+  assert.match(app, /\/api\/activity/);
+  assert.match(server, /activeThreads = new Map/);
+  assert.match(server, /rollout\.\*empty/);
 });

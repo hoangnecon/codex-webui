@@ -120,6 +120,7 @@ class CodexBridge {
     this.nextId = 1;
     this.pending = new Map();
     this.serverRequests = new Map();
+    this.activeThreads = new Map();
     this.ready = this.start();
   }
 
@@ -171,6 +172,28 @@ class CodexBridge {
       this.serverRequests.set(String(message.id), message);
       broadcast({ type: 'server_request', request: message });
       return;
+    }
+    const threadId = message.params?.threadId || message.params?.turn?.threadId;
+    if (message.method === 'thread/status/changed' && threadId) {
+      if (message.params.status?.type === 'active') {
+        this.activeThreads.set(threadId, {
+          threadId,
+          turnId: this.activeThreads.get(threadId)?.turnId || null,
+          activeFlags: message.params.status.activeFlags || [],
+          updatedAt: Date.now(),
+        });
+      } else {
+        this.activeThreads.delete(threadId);
+      }
+    } else if (message.method === 'turn/started' && threadId) {
+      this.activeThreads.set(threadId, {
+        threadId,
+        turnId: message.params.turn?.id || message.params.turnId || null,
+        activeFlags: [],
+        updatedAt: Date.now(),
+      });
+    } else if (message.method === 'turn/completed' && threadId) {
+      this.activeThreads.delete(threadId);
     }
     broadcast({ type: 'codex_event', event: message });
   }
@@ -261,13 +284,20 @@ async function api(req, res, pathname) {
     await bridge.ready;
     return json(res, 200, { ok: true, codex: 'connected', host: HOST, workspaceRoot: WORKSPACE_ROOT });
   }
+  if (pathname === '/api/activity' && req.method === 'GET') {
+    return json(res, 200, { activeThreads: [...bridge.activeThreads.values()] });
+  }
   if (pathname === '/api/events' && req.method === 'GET') {
     res.writeHead(200, secureHeaders({
       'Content-Type': 'text/event-stream',
       'Connection': 'keep-alive',
       'X-Accel-Buffering': 'no',
     }));
-    res.write(`data: ${JSON.stringify({ type: 'connected', pendingRequests: [...bridge.serverRequests.values()] })}\n\n`);
+    res.write(`data: ${JSON.stringify({
+      type: 'connected',
+      pendingRequests: [...bridge.serverRequests.values()],
+      activeThreads: [...bridge.activeThreads.values()],
+    })}\n\n`);
     sseClients.add(res);
     req.on('close', () => sseClients.delete(res));
     return;
@@ -291,7 +321,17 @@ async function api(req, res, pathname) {
   }
   const threadMatch = pathname.match(/^\/api\/threads\/([^/]+)$/);
   if (threadMatch && req.method === 'GET') {
-    const result = await bridge.request('thread/read', { threadId: decodeURIComponent(threadMatch[1]), includeTurns: true });
+    const params = { threadId: decodeURIComponent(threadMatch[1]), includeTurns: true };
+    let result;
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      try {
+        result = await bridge.request('thread/read', params);
+        break;
+      } catch (error) {
+        if (!/rollout.*empty|failed to load thread history/i.test(error.message) || attempt === 4) throw error;
+        await new Promise((resolve) => setTimeout(resolve, 100 * (attempt + 1)));
+      }
+    }
     return json(res, 200, result);
   }
   const messageMatch = pathname.match(/^\/api\/threads\/([^/]+)\/messages$/);
@@ -311,6 +351,12 @@ async function api(req, res, pathname) {
       approvalPolicy: 'on-request',
       approvalsReviewer: 'user',
       effort: body.effort || null,
+    });
+    bridge.activeThreads.set(threadId, {
+      threadId,
+      turnId: result.turn?.id || result.id || null,
+      activeFlags: [],
+      updatedAt: Date.now(),
     });
     return json(res, 202, result);
   }

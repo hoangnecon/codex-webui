@@ -41,8 +41,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .thread-item:hover { background: #15171b; }
 .thread-item.active { color: var(--text); background: var(--panel-2); }
 .thread-item strong, .thread-item span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.thread-item strong { font-size: 13px; font-weight: 550; }
+.thread-item strong { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 550; }
 .thread-item span { margin-top: 4px; color: #6f7580; font-size: 11px; }
+.thread-activity { flex: 0 0 auto; width: 7px; height: 7px; border: 2px solid var(--green); border-top-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 .sidebar-footer { display: flex; align-items: center; justify-content: space-between; padding: 11px 5px 0; border-top: 1px solid var(--border); }
 .connection { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 11px; }
 .connection i, .status-pill i { width: 7px; height: 7px; border-radius: 50%; background: #606670; }
