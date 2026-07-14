@@ -11,7 +11,7 @@ A private browser interface for the Codex instance on this laptop. It uses the o
 - State-changing requests require the exact WebUI origin.
 - Login attempts are rate limited in memory.
 - Working directories are restricted to `/home/eric/workspace` and its real child directories.
-- Commands and file changes retain Codex's explicit approval flow.
+- Threads run in auto-workspace mode: commands are automatically approved inside `/home/eric/workspace`, with network access enabled. The rest of the laptop remains outside the writable sandbox.
 - The browser never receives the ChatGPT session or API credentials used by Codex.
 
 This is a trusted personal tool, not a multi-user or public internet service. Do not bind it to `0.0.0.0`, expose it through router port forwarding, or place it behind a public tunnel.
@@ -52,16 +52,16 @@ mkdir protocol
 codex app-server generate-json-schema --out protocol
 ```
 
-After upgrading the Codex CLI, regenerate the schema and test thread creation, history, streaming, interruption, and both command and file-change approvals before relying on the WebUI.
+After upgrading the Codex CLI, regenerate the schema and test thread creation, history, streaming, interruption, sandbox enforcement, and automatic workspace execution before relying on the WebUI.
 
 ## Current scope
 
 - Browse and resume Codex threads
 - Create a thread for any folder under `/home/eric/workspace`
 - Stream agent messages and tool activity
-- Approve or deny command and file-change requests
+- Automatically run commands and file changes inside the workspace sandbox
 - Interrupt active turns
 - Select reasoning effort
 - Responsive desktop and mobile layout
 
-Interactive structured questionnaires and advanced permission-profile requests are not yet presented as custom forms. Codex's ordinary command and file-change approvals are supported.
+Interactive structured questionnaires and advanced permission-profile requests are not yet presented as custom forms. Requests requiring access outside the workspace sandbox fail instead of being automatically elevated.

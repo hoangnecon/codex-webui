@@ -26,6 +26,7 @@ const WORKSPACE_ROOT = fs.realpathSync(process.env.WORKSPACE_ROOT || '/home/eric
 const PASSWORD_SALT = process.env.PASSWORD_SALT || '';
 const PASSWORD_HASH = process.env.PASSWORD_HASH || '';
 const SESSION_HOURS = Math.min(168, Math.max(1, Number(process.env.SESSION_HOURS || 24)));
+const EXECUTION_MODE = 'auto-workspace';
 const sessions = new Map();
 const loginAttempts = new Map();
 const sseClients = new Set();
@@ -282,7 +283,7 @@ async function api(req, res, pathname) {
   if (pathname === '/api/workspaces' && req.method === 'GET') return json(res, 200, { workspaces: listWorkspaces() });
   if (pathname === '/api/status' && req.method === 'GET') {
     await bridge.ready;
-    return json(res, 200, { ok: true, codex: 'connected', host: HOST, workspaceRoot: WORKSPACE_ROOT });
+    return json(res, 200, { ok: true, codex: 'connected', host: HOST, workspaceRoot: WORKSPACE_ROOT, executionMode: EXECUTION_MODE });
   }
   if (pathname === '/api/activity' && req.method === 'GET') {
     return json(res, 200, { activeThreads: [...bridge.activeThreads.values()] });
@@ -312,7 +313,7 @@ async function api(req, res, pathname) {
     const result = await bridge.request('thread/start', {
       cwd,
       model: body.model || null,
-      approvalPolicy: 'on-request',
+      approvalPolicy: 'never',
       approvalsReviewer: 'user',
       sandbox: 'workspace-write',
       personality: body.personality || null,
@@ -348,8 +349,13 @@ async function api(req, res, pathname) {
       threadId,
       input: [{ type: 'text', text: body.text }],
       cwd: body.cwd || null,
-      approvalPolicy: 'on-request',
+      approvalPolicy: 'never',
       approvalsReviewer: 'user',
+      sandboxPolicy: {
+        type: 'workspaceWrite',
+        writableRoots: [WORKSPACE_ROOT],
+        networkAccess: true,
+      },
       effort: body.effort || null,
     });
     bridge.activeThreads.set(threadId, {
