@@ -76,3 +76,14 @@ test('live activity panel renders supported progress without private reasoning t
   assert.match(app, /item\/fileChange\/patchUpdated/);
   assert.doesNotMatch(app, /method === 'item\/reasoning\/textDelta'/);
 });
+
+test('mobile layout supports iPhone safe areas, dynamic viewport, and keyboard-safe controls', () => {
+  const login = fs.readFileSync(path.join(root, 'public/login.html'), 'utf8');
+  const css = fs.readFileSync(path.join(root, 'public/app.css'), 'utf8');
+  assert.match(html, /viewport-fit=cover/);
+  assert.match(login, /viewport-fit=cover/);
+  assert.match(css, /100dvh/);
+  assert.match(css, /safe-area-inset-bottom/);
+  assert.match(css, /-webkit-overflow-scrolling: touch/);
+  assert.match(css, /\.composer textarea \{[^}]*font-size: 16px/);
+});
