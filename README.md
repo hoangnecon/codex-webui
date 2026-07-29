@@ -6,6 +6,9 @@ Free, self-hosted browser UI for Codex on **your** machine. Uses the official `c
 
 **Downloads & setup guide:** [agentmediatools.com/webui](https://agentmediatools.com/webui)
 
+Independent community project from Agent Media Tools. Not affiliated with or
+endorsed by OpenAI.
+
 ## Features
 
 - Browse and resume Codex threads

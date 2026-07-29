@@ -14,7 +14,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=/home/eric/workspace /home/eric/.codex /home/eric/.cache
+ReadWritePaths=__WORKSPACE_ROOT__ %h/.codex %h/.cache
 
 [Install]
 WantedBy=default.target

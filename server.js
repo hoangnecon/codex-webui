@@ -4,6 +4,7 @@ const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const os = require('node:os');
 const readline = require('node:readline');
 const { spawn } = require('node:child_process');
 
@@ -25,7 +26,7 @@ loadEnv(path.join(PROJECT_ROOT, '.env'));
 
 const HOST = process.env.HOST || '127.0.0.1';
 const PORT = Number(process.env.PORT || 4545);
-const WORKSPACE_ROOT = fs.realpathSync(process.env.WORKSPACE_ROOT || '/home/eric/workspace');
+const WORKSPACE_ROOT = fs.realpathSync(process.env.WORKSPACE_ROOT || os.homedir());
 const PASSWORD_SALT = process.env.PASSWORD_SALT || '';
 const PASSWORD_HASH = process.env.PASSWORD_HASH || '';
 const SESSION_HOURS = Math.min(168, Math.max(1, Number(process.env.SESSION_HOURS || 24)));
@@ -293,7 +294,7 @@ class CodexBridge {
       });
       readline.createInterface({ input: this.proc.stdout }).on('line', (line) => this.onLine(line));
       this.rawRequest('initialize', {
-        clientInfo: { name: 'eric_codex_webui', title: 'Eric Codex WebUI', version: '0.1.0' },
+        clientInfo: { name: 'codex_webui', title: 'Codex WebUI', version: '0.1.0' },
         capabilities: { experimentalApi: true },
       }).then(() => {
         this.send({ method: 'initialized', params: {} });

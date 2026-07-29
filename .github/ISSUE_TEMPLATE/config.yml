@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security issue
+    url: https://github.com/Pedregoneric/codex-webui/security/advisories/new
+    about: Report vulnerabilities privately.
+  - name: Setup and downloads
+    url: https://agentmediatools.com/webui
+    about: Read the installation guide and download packaged releases.

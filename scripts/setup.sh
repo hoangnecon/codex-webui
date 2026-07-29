@@ -63,7 +63,9 @@ mkdir -p "$ROOT/data/uploads"
 unset PASSWORD CONFIRM
 
 mkdir -p "$SERVICE_DIR"
-sed "s|__PROJECT_ROOT__|$ROOT|g" "$ROOT/systemd/codex-webui.service" > "$SERVICE_FILE"
+sed -e "s|__PROJECT_ROOT__|$ROOT|g" \
+  -e "s|__WORKSPACE_ROOT__|$WORKSPACE_ROOT|g" \
+  "$ROOT/systemd/codex-webui.service" > "$SERVICE_FILE"
 systemctl --user daemon-reload
 systemctl --user enable --now codex-webui.service
 
