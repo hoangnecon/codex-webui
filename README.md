@@ -15,6 +15,7 @@ Free, self-hosted browser UI for Codex on **your** machine. Uses the official `c
 - Browse recent uploads and generated workspace files in an authenticated file/image gallery
 - Choose Restrictive, Moderate, or YOLO permissions backed by Codex approval and sandbox policies
 - Queue follow-up messages while Codex works, or interrupt and send one immediately
+- Browse the complete current Codex CLI slash-command catalog with real WebUI/app-server actions where supported and clear labels for terminal-only flows
 - Keep the active execution plan and live chat updates across page refreshes
 - Reasoning effort picker
 - Interrupt active turns
@@ -94,6 +95,7 @@ After upgrading the Codex CLI, regenerate the schema and test thread creation, h
 | Files | Sidebar **▦ Files** for the authenticated gallery |
 | Permissions | **Prefs → Agent permissions** |
 | Follow-up | Send while working, then choose **Queue** or **Interrupt & send** |
+| WebUI commands | Type `/` |
 | Tip | Sidebar **♡ Tip** (optional) |
 
 ## Optional tip

@@ -515,6 +515,21 @@ select {
   padding: 0 2px; color: var(--muted); background: transparent; border: 0; font-size: 14px;
 }
 .attach-chip button:hover { color: var(--red); }
+.command-menu {
+  max-height: 240px; margin-bottom: 8px; overflow-y: auto;
+  background: #17191d; border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+.command-item {
+  display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: 10px;
+  width: 100%; padding: 10px 12px; border: 0; background: transparent;
+  color: var(--text); text-align: left; border-bottom: 1px solid var(--border);
+}
+.command-item:last-child { border-bottom: 0; }
+.command-item:hover, .command-item.active { background: var(--panel-3); }
+.command-item.unavailable { opacity: .62; }
+.command-item strong { color: var(--accent); font-size: 12px; }
+.command-item span { color: var(--muted); font-size: 11px; line-height: 1.4; }
 .composer-top { display: flex; align-items: flex-start; gap: 8px; }
 .attach-button {
   flex: 0 0 auto; width: 32px; height: 32px; margin-top: 2px;

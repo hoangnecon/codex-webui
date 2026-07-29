@@ -6,7 +6,7 @@
   <title>Codex WebUI</title>
   <meta name="description" content="Free self-hosted browser UI for Codex on your machine.">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/app.css?v=14">
+  <link rel="stylesheet" href="/app.css?v=15">
   <script src="/viewport.js?v=3"></script>
 </head>
 <body data-theme="dark" data-accent="green">
@@ -123,6 +123,7 @@
 
       <footer class="composer-wrap">
         <div class="message-queue hidden" id="message-queue"></div>
+        <div class="command-menu hidden" id="command-menu" role="listbox" aria-label="Codex WebUI commands"></div>
         <div class="queue-choice hidden" id="queue-choice">
           <span>Codex is working. What should happen with this message?</span>
           <button class="secondary" id="queue-later" type="button">Queue</button>
@@ -134,7 +135,7 @@
           <div class="composer-top">
             <button type="button" class="attach-button" id="attach-button" title="Attach files or images" aria-label="Attach files">📎</button>
             <input type="file" id="file-input" class="hidden" multiple>
-            <textarea id="message" rows="1" maxlength="50000" placeholder="Message Codex…"></textarea>
+            <textarea id="message" rows="1" maxlength="50000" placeholder="Message Codex…  (/ for commands)"></textarea>
           </div>
           <div class="composer-footer">
             <div class="composer-settings">
@@ -150,7 +151,7 @@
             <button class="send-button" type="submit" aria-label="Send">↑</button>
           </div>
         </form>
-        <p class="composer-note"><span id="permission-note">YOLO permissions</span> · files &amp; images up to 25MB · private network only</p>
+        <p class="composer-note"><span id="permission-note">YOLO permissions</span> · attachments &amp; /commands · private network only</p>
       </footer>
     </main>
   </div>
@@ -287,6 +288,6 @@
     </div>
   </div>
 
-  <script src="/app.js?v=15"></script>
+  <script src="/app.js?v=16"></script>
 </body>
 </html>

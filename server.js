@@ -627,6 +627,33 @@ async function api(req, res, pathname) {
     });
     return json(res, 202, result);
   }
+  const commandMatch = pathname.match(/^\/api\/threads\/([^/]+)\/commands\/([^/]+)$/);
+  if (commandMatch && req.method === 'POST') {
+    const threadId = decodeURIComponent(commandMatch[1]);
+    const action = decodeURIComponent(commandMatch[2]);
+    const body = await readJson(req, 16 * 1024);
+    let result;
+    if (action === 'compact') {
+      result = await bridge.request('thread/compact/start', { threadId });
+    } else if (action === 'review') {
+      result = await bridge.request('review/start', {
+        threadId,
+        target: { type: 'uncommittedChanges' },
+        delivery: 'inline',
+      });
+    } else if (action === 'rename') {
+      const name = String(body.name || '').trim();
+      if (!name || name.length > 120) return json(res, 400, { error: 'Name must be 1–120 characters' });
+      result = await bridge.request('thread/name/set', { threadId, name });
+    } else if (action === 'fork') {
+      result = await bridge.request('thread/fork', { threadId });
+    } else if (action === 'archive') {
+      result = await bridge.request('thread/archive', { threadId });
+    } else {
+      return json(res, 404, { error: 'Unsupported thread command' });
+    }
+    return json(res, 200, result || { ok: true });
+  }
   const interruptMatch = pathname.match(/^\/api\/threads\/([^/]+)\/turns\/([^/]+)\/interrupt$/);
   if (interruptMatch && req.method === 'POST') {
     const result = await bridge.request('turn/interrupt', {

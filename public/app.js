@@ -89,6 +89,7 @@ if ($('#composer-form')) {
     reconnectEvents: [],
     messageQueue: [],
     stagedMessage: null,
+    commandIndex: 0,
   };
 
   const PREFS_KEY = 'codex-webui-prefs-v1';
@@ -106,6 +107,168 @@ if ($('#composer-form')) {
     notifyOnComplete: false,
     permissionMode: 'moderate',
   };
+  const CLI_ONLY = 'Available in the terminal CLI; its TUI flow is not exposed by app-server.';
+  const WEBUI_COMMANDS = [
+    { name: 'new', description: 'Start a new thread', action: () => newThread() },
+    { name: 'clear', description: 'Start a fresh thread (WebUI equivalent)', action: () => newThread() },
+    { name: 'compact', description: 'Compact this thread to free context', threadAction: 'compact' },
+    { name: 'review', description: 'Review uncommitted working-tree changes', threadAction: 'review' },
+    { name: 'rename', description: 'Rename the current thread', action: renameCurrentThread },
+    { name: 'fork', description: 'Fork the current thread', action: forkCurrentThread },
+    { name: 'archive', description: 'Archive the current thread', action: archiveCurrentThread },
+    { name: 'copy', description: 'Copy the latest Codex reply', action: () => copyLastAssistant() },
+    { name: 'mention', description: 'Open files and images to attach', action: () => openGallery() },
+    { name: 'permissions', description: 'Change approval and sandbox permissions', action: () => openPrefsModal() },
+    { name: 'status', description: 'Show session status and usage', action: showSessionStatus },
+    { name: 'usage', description: 'Refresh and show account usage', action: showAccountUsage },
+    { name: 'stop', description: 'Stop the active WebUI turn', action: () => $('#interrupt').click() },
+    { name: 'clean', description: 'Alias for /stop in the terminal CLI', action: () => $('#interrupt').click() },
+    { name: 'files', description: 'Open WebUI files and images', action: () => openGallery(), webui: true },
+    { name: 'prefs', description: 'Open WebUI preferences', action: () => openPrefsModal(), webui: true },
+    { name: 'export', description: 'Export this chat as Markdown', action: () => exportThreadMarkdown(), webui: true },
+    { name: 'model', description: 'Choose the active model and reasoning effort', unavailable: CLI_ONLY },
+    { name: 'fast', description: 'Toggle the Fast service tier', unavailable: CLI_ONLY },
+    { name: 'personality', description: 'Choose a response personality', unavailable: CLI_ONLY },
+    { name: 'plan', description: 'Switch the composer to plan mode', unavailable: CLI_ONLY },
+    { name: 'goal', description: 'Set or manage a persistent task goal', unavailable: CLI_ONLY },
+    { name: 'diff', description: 'Open the interactive Git diff viewer', unavailable: CLI_ONLY },
+    { name: 'init', description: 'Generate an AGENTS.md scaffold', unavailable: CLI_ONLY },
+    { name: 'mcp', description: 'Inspect configured MCP tools', unavailable: CLI_ONLY },
+    { name: 'apps', description: 'Browse apps and insert an app mention', unavailable: CLI_ONLY },
+    { name: 'plugins', description: 'Browse and manage plugins', unavailable: CLI_ONLY },
+    { name: 'skills', description: 'Browse and select skills', unavailable: CLI_ONLY },
+    { name: 'hooks', description: 'Inspect and manage lifecycle hooks', unavailable: CLI_ONLY },
+    { name: 'memories', description: 'Configure memory behavior', unavailable: CLI_ONLY },
+    { name: 'approve', description: 'Retry an auto-review denial', unavailable: CLI_ONLY },
+    { name: 'agent', description: 'Switch active agent threads', unavailable: CLI_ONLY },
+    { name: 'subagents', description: 'Alias for /agent', unavailable: CLI_ONLY },
+    { name: 'side', description: 'Start an ephemeral side chat', unavailable: CLI_ONLY },
+    { name: 'btw', description: 'Alias for /side', unavailable: CLI_ONLY },
+    { name: 'resume', description: 'Resume a saved chat', unavailable: 'Use the WebUI thread list instead.' },
+    { name: 'ide', description: 'Include current IDE context', unavailable: CLI_ONLY },
+    { name: 'ps', description: 'Inspect background terminals', unavailable: CLI_ONLY },
+    { name: 'experimental', description: 'Toggle experimental features', unavailable: CLI_ONLY },
+    { name: 'import', description: 'Import Claude Code configuration', unavailable: CLI_ONLY },
+    { name: 'feedback', description: 'Send diagnostics and feedback', unavailable: CLI_ONLY },
+    { name: 'debug-config', description: 'Inspect effective configuration layers', unavailable: CLI_ONLY },
+    { name: 'logout', description: 'Sign out of Codex credentials', unavailable: 'Use the terminal CLI; WebUI Sign out only closes this browser session.' },
+    { name: 'delete', description: 'Permanently delete the current session', unavailable: 'Not exposed in WebUI because deletion is permanent.' },
+    { name: 'quit', description: 'Exit the terminal CLI', unavailable: 'Not applicable to a browser tab.' },
+    { name: 'exit', description: 'Alias for /quit', unavailable: 'Not applicable to a browser tab.' },
+    { name: 'app', description: 'Continue in the desktop app', unavailable: CLI_ONLY },
+    { name: 'raw', description: 'Toggle raw terminal scrollback', unavailable: CLI_ONLY },
+    { name: 'vim', description: 'Toggle terminal composer Vim mode', unavailable: CLI_ONLY },
+    { name: 'keymap', description: 'Remap terminal shortcuts', unavailable: CLI_ONLY },
+    { name: 'statusline', description: 'Configure terminal status-line fields', unavailable: CLI_ONLY },
+    { name: 'title', description: 'Configure the terminal title', unavailable: CLI_ONLY },
+    { name: 'theme', description: 'Choose a terminal syntax theme', unavailable: CLI_ONLY },
+    { name: 'pets', description: 'Choose a terminal pet', unavailable: CLI_ONLY },
+    { name: 'pet', description: 'Alias for /pets', unavailable: CLI_ONLY },
+    { name: 'setup-default-sandbox', description: 'Set up the Windows elevated sandbox', unavailable: CLI_ONLY },
+    { name: 'sandbox-add-read-dir', description: 'Grant Windows sandbox read access', unavailable: CLI_ONLY },
+  ];
+
+  async function runThreadAction(action, body = {}) {
+    if (!state.threadId) throw new Error('Open or start a thread first');
+    return request(`/api/threads/${encodeURIComponent(state.threadId)}/commands/${action}`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  }
+
+  async function renameCurrentThread() {
+    if (!state.threadId) throw new Error('Open or start a thread first');
+    const current = $('#thread-title').textContent === 'New thread' ? '' : $('#thread-title').textContent;
+    const name = window.prompt('Rename this thread', current);
+    if (name == null) return;
+    await runThreadAction('rename', { name });
+    $('#thread-title').textContent = name.trim();
+    await loadThreads();
+  }
+
+  async function forkCurrentThread() {
+    const result = await runThreadAction('fork');
+    const id = result.thread?.id || result.threadId;
+    await loadThreads();
+    if (id) await openThread(id);
+    toast('Thread forked');
+  }
+
+  async function archiveCurrentThread() {
+    if (!window.confirm('Archive this thread? You can restore it with the Codex CLI.')) return;
+    await runThreadAction('archive');
+    newThread();
+    await loadThreads();
+    toast('Thread archived');
+  }
+
+  function showSessionStatus() {
+    const mode = $('#permission-pill')?.textContent || '—';
+    const tokens = $('#session-tokens')?.textContent || 'Chat · —';
+    const provider = $('#provider-usage')?.textContent || 'Model · —';
+    toast(`${state.running ? 'Working' : 'Ready'} · ${mode} · ${tokens} · ${provider}`);
+  }
+
+  async function showAccountUsage() {
+    await refreshAccountRateLimits();
+    showSessionStatus();
+  }
+
+  function hideCommands() {
+    $('#command-menu').classList.add('hidden');
+    $('#command-menu').replaceChildren();
+    state.commandIndex = 0;
+  }
+
+  async function runCommand(command) {
+    const input = $('#message');
+    input.value = '';
+    input.style.height = '';
+    saveDraft();
+    hideCommands();
+    if (command.unavailable) {
+      toast(command.unavailable, 'error');
+      return;
+    }
+    try {
+      if (command.threadAction) {
+        await runThreadAction(command.threadAction);
+        toast(command.threadAction === 'compact' ? 'Compaction started' : 'Review started');
+      } else {
+        await command.action();
+      }
+    } catch (error) {
+      toast(error.message, 'error');
+    }
+  }
+
+  function showCommands(filter = '') {
+    const needle = filter.replace(/^\//, '').toLowerCase();
+    const matches = WEBUI_COMMANDS
+      .filter((command) => (!command.available || command.available())
+        && (!needle || command.name.includes(needle) || command.description.toLowerCase().includes(needle)));
+    const menu = $('#command-menu');
+    menu.replaceChildren();
+    if (!matches.length) return menu.classList.add('hidden');
+    menu.classList.remove('hidden');
+    state.commandIndex = 0;
+    matches.forEach((command, index) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = `command-item${index === 0 ? ' active' : ''}${command.unavailable ? ' unavailable' : ''}`;
+      button.dataset.name = command.name;
+      const name = document.createElement('strong');
+      name.textContent = `/${command.name}`;
+      const description = document.createElement('span');
+      description.textContent = `${command.description}${command.unavailable ? ' · CLI only' : ''}`;
+      button.append(name, description);
+      button.addEventListener('mousedown', (event) => {
+        event.preventDefault();
+        runCommand(command);
+      });
+      menu.append(button);
+    });
+  }
 
   function loadPrefs() {
     let stored = {};
@@ -1728,6 +1891,7 @@ if ($('#composer-form')) {
 
   $('#composer-form').addEventListener('submit', (event) => {
     event.preventDefault();
+    hideCommands();
     const input = $('#message');
     const text = input.value;
     if (state.running) {
@@ -1750,6 +1914,26 @@ if ($('#composer-form')) {
     $('#queue-choice').classList.add('hidden');
   });
   $('#message').addEventListener('keydown', (event) => {
+    const menu = $('#command-menu');
+    if (!menu.classList.contains('hidden') && ['ArrowDown', 'ArrowUp', 'Enter', 'Tab', 'Escape'].includes(event.key)) {
+      const items = [...menu.querySelectorAll('.command-item')];
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        hideCommands();
+        return;
+      }
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        const offset = event.key === 'ArrowDown' ? 1 : -1;
+        state.commandIndex = Math.max(0, Math.min(items.length - 1, state.commandIndex + offset));
+        items.forEach((item, index) => item.classList.toggle('active', index === state.commandIndex));
+        return;
+      }
+      event.preventDefault();
+      const selected = WEBUI_COMMANDS.find((command) => command.name === items[state.commandIndex]?.dataset.name);
+      if (selected) runCommand(selected);
+      return;
+    }
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
       $('#composer-form').requestSubmit();
@@ -1758,6 +1942,10 @@ if ($('#composer-form')) {
   $('#message').addEventListener('input', (event) => {
     event.target.style.height = 'auto';
     event.target.style.height = `${Math.min(event.target.scrollHeight, 120)}px`;
+    const cursor = event.target.selectionStart || event.target.value.length;
+    const slash = event.target.value.slice(0, cursor).match(/(?:^|\s)(\/[^\s]*)$/);
+    if (slash) showCommands(slash[1]);
+    else hideCommands();
   });
 
   $('#attach-button').addEventListener('click', () => $('#file-input').click());

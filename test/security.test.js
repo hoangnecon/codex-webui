@@ -204,6 +204,28 @@ test('messages can be queued or interrupt the active turn without being lost on 
   assert.match(app, /localStorage\.setItem\(QUEUE_KEY/);
 });
 
+test('slash command menu covers the CLI catalog and supports keyboard selection', () => {
+  const css = fs.readFileSync(path.join(root, 'public/app.css'), 'utf8');
+  assert.match(html, /id="command-menu"/);
+  assert.match(html, /\/ for commands/);
+  assert.match(app, /const WEBUI_COMMANDS/);
+  assert.match(app, /name: 'compact'/);
+  assert.match(app, /name: 'review'/);
+  assert.match(app, /name: 'model'/);
+  assert.match(app, /name: 'plugins'/);
+  assert.match(app, /CLI_ONLY/);
+  assert.match(app, /function showCommands/);
+  assert.match(app, /function runCommand/);
+  assert.match(server, /thread\/compact\/start/);
+  assert.match(server, /review\/start/);
+  assert.match(server, /thread\/name\/set/);
+  assert.match(server, /thread\/fork/);
+  assert.match(server, /thread\/archive/);
+  assert.match(app, /ArrowDown/);
+  assert.match(app, /command\.action\(\)/);
+  assert.match(css, /\.command-menu/);
+});
+
 test('live activity panel renders supported progress without private reasoning text', () => {
   assert.match(html, /id="activity-rail"/);
   assert.match(app, /item\/reasoning\/summaryTextDelta/);
