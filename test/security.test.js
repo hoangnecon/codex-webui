@@ -64,6 +64,9 @@ test('refresh reconnects SSE immediately and restores active plan events', () =>
   assert.match(app, /reconnectEvents/);
   assert.match(app, /connectEvents\(\);\s*request\('\/api\/status'\)/);
   assert.match(app, /for \(const entry of replay\) handleCodexEvent\(entry\.event\)/);
+  assert.match(app, /Fresh thread history is authoritative/);
+  assert.doesNotMatch(app, /Boolean\(activeTurn\) \|\| state\.activeThreadIds\.has/);
+  assert.match(app, /window\.addEventListener\('pageshow'/);
 });
 
 test('chat messages render lightweight markdown into safe DOM', () => {

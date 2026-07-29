@@ -589,7 +589,10 @@ if ($('#composer-form')) {
 
   function syncThreadStatus(thread) {
     const type = thread?.status?.type || thread?.status;
-    if (type === 'active') state.activeThreadIds.add(thread.id);
+    const id = thread?.id || state.threadId;
+    if (!id) return;
+    if (type === 'active') state.activeThreadIds.add(id);
+    else state.activeThreadIds.delete(id);
   }
 
   function threadTitle(thread) {
@@ -1189,7 +1192,9 @@ if ($('#composer-form')) {
       syncThreadStatus(thread);
       const activeTurn = [...(thread.turns || [])].reverse().find((turn) => turn.status === 'inProgress');
       state.turnId = activeTurn?.id || (state.running ? state.turnId : null);
-      const active = thread.status?.type === 'active' || Boolean(activeTurn) || state.activeThreadIds.has(state.threadId);
+      // Fresh thread history is authoritative. A mobile browser can silently
+      // miss the SSE completion event and leave activeThreadIds stale.
+      const active = thread.status?.type === 'active' || Boolean(activeTurn);
       setRunning(active);
       if (!active && state.awaitingTurn) {
         state.awaitingTurn = false;
@@ -1704,6 +1709,10 @@ if ($('#composer-form')) {
       window.addEventListener('focus', () => {
         if (state.threadId) resyncThread();
         refreshAccountRateLimits().catch(() => {});
+      });
+      window.addEventListener('pageshow', () => {
+        if (state.threadId) resyncThread({ force: true });
+        connectEvents();
       });
       window.addEventListener('online', () => {
         setConnected(true);
