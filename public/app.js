@@ -5,12 +5,16 @@ const $$ = (selector) => [...document.querySelectorAll(selector)];
 
 /** Keep the app shell sized to the *visible* viewport (not layout 100vh). */
 function syncAppHeight() {
-  const height = Math.round(
-    (window.visualViewport && window.visualViewport.height) || window.innerHeight || 0
-  );
+  const viewport = window.visualViewport;
+  const height = Math.round((viewport && viewport.height) || window.innerHeight || 0);
+  const width = Math.round((viewport && viewport.width) || window.innerWidth || 0);
+  const style = document.documentElement.style;
   if (height > 0) {
-    document.documentElement.style.setProperty('--app-height', `${height}px`);
+    style.setProperty('--app-height', `${height}px`);
   }
+  if (width > 0) style.setProperty('--app-width', `${width}px`);
+  style.setProperty('--app-top', `${Math.round((viewport && viewport.offsetTop) || 0)}px`);
+  style.setProperty('--app-left', `${Math.round((viewport && viewport.offsetLeft) || 0)}px`);
 }
 syncAppHeight();
 window.addEventListener('resize', syncAppHeight);
@@ -515,6 +519,30 @@ if ($('#composer-form')) {
       requestAnimationFrame(updateJumpButton);
     });
   }
+
+  function keepLatestVisibleWhileTyping() {
+    const input = $('#message');
+    let followDuringKeyboard = false;
+    const restoreLatest = () => {
+      if (document.activeElement === input && followDuringKeyboard) scrollToLatest();
+    };
+    input.addEventListener('pointerdown', () => {
+      followDuringKeyboard = state.followOutput || nearConversationBottom();
+    }, { passive: true });
+    input.addEventListener('focus', () => {
+      followDuringKeyboard = followDuringKeyboard || state.followOutput || nearConversationBottom();
+      restoreLatest();
+      setTimeout(restoreLatest, 150);
+      setTimeout(restoreLatest, 350);
+    });
+    input.addEventListener('blur', () => {
+      followDuringKeyboard = false;
+    });
+    window.visualViewport?.addEventListener('resize', restoreLatest);
+    window.visualViewport?.addEventListener('scroll', restoreLatest);
+  }
+
+  keepLatestVisibleWhileTyping();
 
   function toast(message, type = '') {
     const node = document.createElement('div');

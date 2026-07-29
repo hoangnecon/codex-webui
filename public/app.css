@@ -80,13 +80,13 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 
 .shell {
   position: fixed;
-  top: 0;
-  left: 0;
+  top: var(--app-top, 0px);
+  left: var(--app-left, 0px);
   display: grid;
   grid-template-columns: 288px minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
   width: 100%;
-  width: 100vw;
+  width: var(--app-width, 100vw);
   height: 100%;
   height: 100dvh;
   height: 100svh;
@@ -315,6 +315,7 @@ select {
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
+  overflow-anchor: none;
   scrollbar-gutter: stable;
 }
 .message { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 13px; margin-bottom: 28px; }

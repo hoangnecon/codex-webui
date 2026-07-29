@@ -234,10 +234,17 @@ test('execution plans remain legible and survive history resyncs for the full tu
 test('mobile layout supports iPhone safe areas, dynamic viewport, and keyboard-safe controls', () => {
   const login = fs.readFileSync(path.join(root, 'public/login.html'), 'utf8');
   const css = fs.readFileSync(path.join(root, 'public/app.css'), 'utf8');
+  const viewport = fs.readFileSync(path.join(root, 'public/viewport.js'), 'utf8');
   assert.match(html, /viewport-fit=cover/);
   assert.match(login, /viewport-fit=cover/);
   assert.match(css, /100dvh/);
   assert.match(css, /safe-area-inset-bottom/);
   assert.match(css, /-webkit-overflow-scrolling: touch/);
   assert.match(css, /\.composer textarea \{[^}]*font-size: 16px/);
+  assert.match(css, /top: var\(--app-top, 0px\)/);
+  assert.match(css, /overflow-anchor: none/);
+  assert.match(viewport, /visualViewport/);
+  assert.match(viewport, /offsetTop/);
+  assert.match(app, /function keepLatestVisibleWhileTyping/);
+  assert.match(app, /visualViewport\?\.addEventListener\('resize', restoreLatest\)/);
 });
