@@ -1,33 +1,62 @@
 # Codex WebUI
 
-A private browser interface for the Codex instance on this laptop. It uses the official `codex app-server` protocol and is intended to be reached only through Tailscale.
+Free, self-hosted browser UI for Codex on **your** machine. Uses the official `codex app-server` protocol. Designed for private access (Tailscale or localhost) — not the public internet.
+
+**Free forever.** No paid tier, no feature unlocks. Optional one-time tips via [agentmediatools.com/tip](https://agentmediatools.com/tip) if it helps.
+
+**Downloads & setup guide:** [agentmediatools.com/webui](https://agentmediatools.com/webui)
+
+## Features
+
+- Browse and resume Codex threads
+- Create a thread for any folder under `WORKSPACE_ROOT`
+- Stream agent messages and tool activity
+- Attach files and images with the picker, drag-and-drop, or clipboard paste (up to 10 files, 25 MB each)
+- Browse recent uploads and generated workspace files in an authenticated file/image gallery
+- Choose Restrictive, Moderate, or YOLO permissions backed by Codex approval and sandbox policies
+- Queue follow-up messages while Codex works, or interrupt and send one immediately
+- Keep the active execution plan and live chat updates across page refreshes
+- Reasoning effort picker
+- Interrupt active turns
+- Approval controls when the agent requests them
+- Responsive desktop and mobile layout
+- Optional tip link (does not unlock features)
 
 ## Security model
 
-- The HTTP server binds to the laptop's Tailscale IPv4 address, not `0.0.0.0`.
-- Codex App Server uses its local `stdio` transport and is never exposed on a network port.
-- A scrypt-hashed password protects the UI; the raw password is not stored.
-- Sessions use random, `HttpOnly`, `SameSite=Strict` cookies and expire after 24 hours by default.
-- State-changing requests require the exact WebUI origin.
-- Login attempts are rate limited in memory.
-- New thread working directories are restricted to `/home/eric/workspace` and its real child directories.
-- Threads run with full filesystem and network access and no approval prompts. This permits Git branch/commit operations, but commands can also affect files outside the selected workspace.
-- The browser never receives the ChatGPT session or API credentials used by Codex.
+- Binds to an explicit host (setup uses Tailscale IPv4, or `127.0.0.1`) — not `0.0.0.0` by default
+- Codex App Server uses local `stdio` only; never exposed as a network port
+- Scrypt-hashed password; raw password is not stored
+- Sessions: random `HttpOnly`, `SameSite=Strict` cookies (default 24h)
+- State-changing requests require the exact WebUI origin
+- Login attempts rate limited in memory
+- Working directories restricted to `WORKSPACE_ROOT` and real children
+- Permission presets are validated on the server: Restrictive is read-only, Moderate confines writes to the workspace, and YOLO enables automatic full-machine access
+- Browser never receives ChatGPT session or API credentials used by Codex
 
-This is a trusted personal tool, not a multi-user or public internet service. Do not bind it to `0.0.0.0`, expose it through router port forwarding, or place it behind a public tunnel. Because Codex has full access, avoid untrusted prompts and treat instructions embedded in websites as potentially malicious.
+This is a **trusted personal tool**, not a multi-user or public SaaS. Do not bind it to `0.0.0.0`, expose it through router port forwarding, or place it behind a public tunnel.
 
 ## Setup
 
-From an interactive terminal on the laptop:
+Prerequisites:
+
+- Node.js 20+
+- Working `codex` CLI / app-server
+- Tailscale optional (recommended for phone / other devices)
 
 ```bash
-cd /home/eric/workspace/codex-webui
+cd /path/to/codex-webui
+chmod +x ./scripts/setup.sh
 ./scripts/setup.sh
 ```
 
-Choose a unique password of at least 12 characters. Setup writes a mode-`600` `.env` containing only the password hash and local service settings, then installs a systemd user service.
+Optional before setup:
 
-Open the printed `http://100.x.x.x:4545` URL from a device connected to the same Tailscale network.
+```bash
+export WORKSPACE_ROOT="$HOME/projects"   # default: $HOME
+```
+
+Setup writes a mode-`600` `.env`, installs a systemd user service, and starts it. Open the printed URL (e.g. `http://100.x.x.x:4545`).
 
 ## Service commands
 
@@ -52,16 +81,25 @@ mkdir protocol
 codex app-server generate-json-schema --out protocol
 ```
 
-After upgrading the Codex CLI, regenerate the schema and test thread creation, history, streaming, interruption, sandbox enforcement, and automatic workspace execution before relying on the WebUI.
+After upgrading the Codex CLI, regenerate the schema and test thread creation, history, streaming, interruption, and workspace execution before relying on the WebUI.
 
-## Current scope
+## Usage
 
-- Browse and resume Codex threads
-- Create a thread for any folder under `/home/eric/workspace`
-- Stream agent messages and tool activity
-- Automatically run commands, file changes, and Git operations without approval prompts
-- Interrupt active turns
-- Select reasoning effort
-- Responsive desktop and mobile layout
+| Action | How |
+| --- | --- |
+| New thread | **＋ New thread**, pick a workspace, type a message |
+| Stop a run | **Stop** in the top bar |
+| Activity | **Activity** rail for tools + plan |
+| Approvals | Drawer when Codex requests permission |
+| Files | Sidebar **▦ Files** for the authenticated gallery |
+| Permissions | **Prefs → Agent permissions** |
+| Follow-up | Send while working, then choose **Queue** or **Interrupt & send** |
+| Tip | Sidebar **♡ Tip** (optional) |
 
-Interactive structured questionnaires are not yet presented as custom forms. Full-access mode means commands are not sandboxed or sent for approval.
+## Optional tip
+
+If this saved you time: [agentmediatools.com/tip](https://agentmediatools.com/tip?from=codex-webui) — never required, never unlocks features.
+
+## Relation to Grok WebUI
+
+Grok WebUI (`:4546`) talks to `grok agent stdio`. Codex WebUI (`:4545`) talks to `codex app-server`. Separate services; can run side by side.

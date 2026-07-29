@@ -4,22 +4,28 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>Codex WebUI · Sign in</title>
-  <link rel="stylesheet" href="/app.css">
+  <meta name="description" content="Sign in to your free self-hosted Codex WebUI.">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/app.css?v=11">
+  <script src="/viewport.js?v=2"></script>
 </head>
 <body class="login-page">
   <main class="login-card">
     <div class="brand-mark" aria-hidden="true">C</div>
-    <p class="eyebrow">PRIVATE WORKSPACE</p>
+    <p class="eyebrow">SELF-HOSTED · FREE FOREVER</p>
     <h1>Codex, from anywhere.</h1>
-    <p class="muted">A private bridge to the Codex instance running on your laptop.</p>
+    <p class="muted">A private bridge to Codex on this machine. Free to run; optional tip if it helps.</p>
     <form id="login-form">
       <label for="password">Access password</label>
       <input id="password" name="password" type="password" autocomplete="current-password" autofocus required>
       <button class="primary wide" type="submit">Open workspace</button>
       <p id="login-error" class="error" role="alert"></p>
     </form>
-    <p class="secure-note"><span>●</span> Available only on your Tailscale network</p>
+    <p class="secure-note"><span>●</span> Bind to Tailscale or localhost — not the public internet</p>
+    <p class="login-tip-link">
+      <a href="https://agentmediatools.com/tip?from=codex-webui" target="_blank" rel="noopener">Optional tip if this helps →</a>
+    </p>
   </main>
-  <script src="/app.js"></script>
+  <script src="/app.js?v=11"></script>
 </body>
 </html>

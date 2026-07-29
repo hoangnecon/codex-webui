@@ -1,6 +1,8 @@
 .env
 node_modules/
 protocol/
+data/amt.json
+data/uploads/
 *.log
 .DS_Store
 coverage/

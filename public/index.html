@@ -4,22 +4,39 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>Codex WebUI</title>
-  <link rel="stylesheet" href="/app.css">
+  <meta name="description" content="Free self-hosted browser UI for Codex on your machine.">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/app.css?v=12">
+  <script src="/viewport.js?v=2"></script>
 </head>
-<body>
+<body data-theme="dark" data-accent="green">
   <div class="shell">
     <aside class="sidebar" id="sidebar">
       <header class="brand-row">
         <div class="brand-mark small">C</div>
-        <div><strong>Codex</strong><span>Private WebUI</span></div>
+        <div><strong>Codex WebUI</strong><span>Self-hosted · free</span></div>
         <button class="icon-button mobile-only" id="close-sidebar" aria-label="Close sidebar">×</button>
       </header>
       <button class="new-thread" id="new-thread">＋ New thread</button>
-      <div class="thread-heading"><span>RECENT THREADS</span><button class="icon-button" id="refresh-threads" title="Refresh">↻</button></div>
+      <div class="fleet-strip" id="fleet-strip" aria-label="Thread status">
+        <span class="fleet-chip working" id="fleet-working">0 working</span>
+        <span class="fleet-chip needs" id="fleet-needs">0 need input</span>
+        <span class="fleet-chip idle" id="fleet-idle">0 idle</span>
+      </div>
+      <label class="session-search">
+        <span class="sr-only">Search threads</span>
+        <input type="search" id="session-search" placeholder="Search threads…" autocomplete="off">
+      </label>
+      <div class="thread-heading"><span>THREADS</span><button class="icon-button" id="refresh-threads" title="Refresh">↻</button></div>
       <nav class="thread-list" id="thread-list" aria-label="Conversations"></nav>
       <footer class="sidebar-footer">
         <div class="connection"><i id="connection-dot"></i><span id="connection-label">Connecting</span></div>
-        <button class="text-button" id="logout">Sign out</button>
+        <div class="sidebar-footer-actions">
+          <button class="text-button" id="open-prefs" type="button" title="Preferences">⚙ Prefs</button>
+          <button class="text-button" id="open-gallery" type="button" title="Files and images">▦ Files</button>
+          <button class="text-button" id="open-tip" type="button" title="Optional tip — free forever">♡ Tip</button>
+          <button class="text-button" id="logout">Sign out</button>
+        </div>
       </footer>
     </aside>
 
@@ -29,70 +46,96 @@
         <div class="thread-meta">
           <strong id="thread-title">New thread</strong>
           <span id="thread-path">Choose a workspace to begin</span>
+          <div class="usage-strip" id="usage-strip" aria-live="polite">
+            <span class="usage-chip" id="session-tokens" title="Tokens reported for this chat">Chat · —</span>
+            <span class="usage-chip" id="provider-usage" title="Codex / provider account usage when reported">Model · —</span>
+            <span class="usage-chip hidden" id="amt-usage" title="Agent Media Tools daily usage &amp; credits">AMT · —</span>
+          </div>
         </div>
         <div class="top-actions">
-          <span class="mode-pill full-access" title="Commands run automatically with full laptop access">Full access</span>
+          <span class="mode-pill full-access" id="permission-pill">YOLO</span>
           <span class="status-pill" id="run-status"><i></i> Ready</span>
+          <button class="text-button" id="copy-last" type="button" title="Copy last assistant reply">Copy</button>
+          <button class="text-button" id="export-thread" type="button" title="Export chat as Markdown">Export</button>
           <button class="activity-toggle" id="activity-toggle" type="button"><span class="activity-pulse"></span> Activity</button>
           <button class="danger subtle hidden" id="interrupt">Stop</button>
         </div>
       </header>
 
-      <section class="empty-state" id="empty-state">
-        <div class="orb">C</div>
-        <p class="eyebrow">LOCAL CODEX · REMOTE COMFORT</p>
-        <h1>What should we work on?</h1>
-        <p>Choose a project, then ask Codex to inspect, build, test, or explain anything on your laptop.</p>
-        <label class="workspace-picker">
-          <span>Working folder</span>
-          <select id="workspace-select"></select>
-        </label>
-        <div class="suggestions">
-          <button data-prompt="Explore this repository and explain the overall architecture.">Explore this repository</button>
-          <button data-prompt="Review the current git status and summarize recent work. Do not modify anything.">Summarize recent work</button>
-          <button data-prompt="Run the available checks and report any failures. Do not modify code yet.">Check project health</button>
-        </div>
-      </section>
-
-      <section class="conversation hidden" id="conversation" aria-live="polite"></section>
-      <button class="jump-latest hidden" id="jump-latest" type="button">↓ Jump to latest</button>
-
-      <aside class="activity-rail" id="activity-rail" aria-label="Codex activity">
-        <header class="activity-header">
-          <div><p class="eyebrow">LIVE SESSION</p><strong>Codex activity</strong></div>
-          <button class="icon-button" id="close-activity" type="button" aria-label="Close activity panel">×</button>
-        </header>
-        <div class="activity-state"><span class="activity-pulse"></span><strong id="activity-state-label">Waiting for work</strong><span id="token-usage"></span></div>
-        <section class="plan-panel hidden" id="plan-panel">
-          <h2>Plan</h2>
-          <p id="plan-explanation"></p>
-          <ol id="plan-list"></ol>
-        </section>
-        <section class="activity-feed-wrap">
-          <h2>Timeline</h2>
-          <div class="activity-feed" id="activity-feed">
-            <p class="activity-empty">Activity will appear here as Codex reasons, uses tools, edits files, and runs checks.</p>
+      <div class="main-pane" id="main-pane">
+        <section class="empty-state" id="empty-state">
+          <div class="orb">C</div>
+          <p class="eyebrow">SELF-HOSTED · FULL ACCESS</p>
+          <h1>What should we work on?</h1>
+          <p>Pick a project folder, then ask Codex to inspect, build, test, or explain anything on this machine.</p>
+          <div class="empty-badges" aria-hidden="true">
+            <span class="empty-badge">Free forever</span>
+            <span class="empty-badge">Your machine</span>
+            <span class="empty-badge">Optional tip</span>
+          </div>
+          <label class="workspace-picker">
+            <span>Working folder</span>
+            <select id="workspace-select"></select>
+          </label>
+          <div class="suggestions">
+            <button data-prompt="Explore this repository and explain the overall architecture.">Explore this repository</button>
+            <button data-prompt="Review the current git status and summarize recent work. Do not modify anything.">Summarize recent work</button>
+            <button data-prompt="Run the available checks and report any failures. Do not modify code yet.">Check project health</button>
           </div>
         </section>
-      </aside>
 
-      <section class="approval-drawer hidden" id="approval-drawer" aria-live="assertive">
-        <div class="approval-icon">!</div>
-        <div class="approval-copy">
-          <strong id="approval-title">Approval required</strong>
-          <p id="approval-summary"></p>
-          <details><summary>View full request</summary><pre id="approval-details"></pre></details>
-        </div>
-        <div class="approval-actions">
-          <button class="danger" data-decision="decline">Deny</button>
-          <button class="secondary" data-decision="accept">Allow once</button>
-          <button class="primary" data-decision="acceptForSession">Allow for session</button>
-        </div>
-      </section>
+        <section class="conversation hidden" id="conversation" aria-live="polite"></section>
+        <button class="jump-latest hidden" id="jump-latest" type="button">↓ Jump to latest</button>
+
+        <aside class="activity-rail" id="activity-rail" aria-label="Codex activity">
+          <header class="activity-header">
+            <div><p class="eyebrow">LIVE SESSION</p><strong>Codex activity</strong></div>
+            <button class="icon-button" id="close-activity" type="button" aria-label="Close activity panel">×</button>
+          </header>
+          <div class="activity-state"><span class="activity-pulse"></span><strong id="activity-state-label">Waiting for work</strong><span id="token-usage"></span></div>
+          <section class="plan-panel hidden" id="plan-panel">
+            <h2>Execution plan</h2>
+            <p id="plan-explanation"></p>
+            <ol id="plan-list"></ol>
+          </section>
+          <section class="activity-feed-wrap">
+            <h2>Timeline</h2>
+            <div class="activity-feed" id="activity-feed">
+              <p class="activity-empty">Activity will appear here as Codex reasons, uses tools, edits files, and runs checks.</p>
+            </div>
+          </section>
+        </aside>
+
+        <section class="approval-drawer hidden" id="approval-drawer" aria-live="assertive">
+          <div class="approval-icon">!</div>
+          <div class="approval-copy">
+            <strong id="approval-title">Approval required</strong>
+            <p id="approval-summary"></p>
+            <details><summary>View full request</summary><pre id="approval-details"></pre></details>
+          </div>
+          <div class="approval-actions">
+            <button class="danger" data-decision="decline">Deny</button>
+            <button class="secondary" data-decision="accept">Allow once</button>
+            <button class="primary" data-decision="acceptForSession">Allow for session</button>
+          </div>
+        </section>
+      </div>
 
       <footer class="composer-wrap">
+        <div class="message-queue hidden" id="message-queue"></div>
+        <div class="queue-choice hidden" id="queue-choice">
+          <span>Codex is working. What should happen with this message?</span>
+          <button class="secondary" id="queue-later" type="button">Queue</button>
+          <button class="danger" id="interrupt-send" type="button">Interrupt &amp; send</button>
+          <button class="text-button" id="cancel-queue-choice" type="button">Cancel</button>
+        </div>
+        <div class="attach-preview hidden" id="attach-preview"></div>
         <form class="composer" id="composer-form">
-          <textarea id="message" rows="1" maxlength="50000" placeholder="Message Codex…" required></textarea>
+          <div class="composer-top">
+            <button type="button" class="attach-button" id="attach-button" title="Attach files or images" aria-label="Attach files">📎</button>
+            <input type="file" id="file-input" class="hidden" multiple>
+            <textarea id="message" rows="1" maxlength="50000" placeholder="Message Codex…"></textarea>
+          </div>
           <div class="composer-footer">
             <div class="composer-settings">
               <select id="effort" aria-label="Reasoning effort">
@@ -107,11 +150,143 @@
             <button class="send-button" type="submit" aria-label="Send">↑</button>
           </div>
         </form>
-        <p class="composer-note">Commands and file changes still require approval when Codex requests it.</p>
+        <p class="composer-note"><span id="permission-note">YOLO permissions</span> · files &amp; images up to 25MB · private network only</p>
       </footer>
     </main>
   </div>
   <div class="toast-region" id="toasts" aria-live="polite"></div>
-  <script src="/app.js"></script>
+
+  <div class="tip-modal hidden" id="tip-modal" role="dialog" aria-modal="true" aria-labelledby="tip-title">
+    <div class="tip-dialog">
+      <button type="button" class="icon-button tip-close" id="close-tip" aria-label="Close">×</button>
+      <div class="tip-icon" aria-hidden="true">♡</div>
+      <h2 id="tip-title">Free forever — optional tip</h2>
+      <p>Codex WebUI stays free. If it made your life easier, leave a one-time tip. Nothing unlocks; no account required.</p>
+      <div class="tip-amounts" role="group" aria-label="Optional tip amounts">
+        <button type="button" data-tip-amount="3">$3<span>Coffee</span></button>
+        <button type="button" data-tip-amount="7">$7<span>Pizza</span></button>
+        <button type="button" data-tip-amount="15">$15<span>Made my week</span></button>
+      </div>
+      <button type="button" class="tip-custom-link" id="tip-custom">Custom amount on agentmediatools.com →</button>
+      <p class="tip-fine">Opens secure Stripe checkout on Agent Media Tools · tips never gate features</p>
+    </div>
+  </div>
+
+  <div class="prefs-modal hidden" id="prefs-modal" role="dialog" aria-modal="true" aria-labelledby="prefs-title">
+    <div class="prefs-dialog">
+      <button type="button" class="icon-button prefs-close" id="close-prefs" aria-label="Close">×</button>
+      <h2 id="prefs-title">Preferences</h2>
+      <p class="prefs-lede">Stored on this machine. Model usage is separate from optional Agent Media Tools.</p>
+
+      <section class="prefs-section">
+        <h3>Chat</h3>
+        <label class="prefs-field">
+          <span>Agent permissions</span>
+          <select id="pref-permission-mode">
+            <option value="restrictive">Restrictive — read-only; ask before changes</option>
+            <option value="moderate">Moderate — workspace changes; ask to escape</option>
+            <option value="yolo">YOLO — full machine access; auto-approve</option>
+          </select>
+        </label>
+        <label class="prefs-field">
+          <span>Default reasoning effort</span>
+          <select id="pref-default-effort" aria-label="Default effort">
+            <option value="">Default</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="xhigh">Extra high</option>
+          </select>
+        </label>
+        <label class="prefs-field">
+          <span>System prompt <small>(per workspace, applied to new turns)</small></span>
+          <textarea id="pref-system-prompt" rows="4" maxlength="8000" placeholder="Optional instructions for Codex in this workspace…"></textarea>
+        </label>
+        <label class="prefs-check">
+          <input type="checkbox" id="pref-auto-scroll" checked>
+          <span>Auto-scroll to latest message</span>
+        </label>
+        <label class="prefs-check">
+          <input type="checkbox" id="pref-auto-activity" checked>
+          <span>Auto-open activity rail on desktop</span>
+        </label>
+        <label class="prefs-check">
+          <input type="checkbox" id="pref-notify-complete">
+          <span>Notify when a turn finishes</span>
+        </label>
+        <label class="prefs-field">
+          <span>Density</span>
+          <select id="pref-density">
+            <option value="comfortable">Comfortable</option>
+            <option value="compact">Compact</option>
+          </select>
+        </label>
+      </section>
+
+      <section class="prefs-section">
+        <h3>Appearance</h3>
+        <div class="prefs-row">
+          <label class="prefs-field">
+            <span>Theme</span>
+            <select id="pref-theme">
+              <option value="dark">Dark</option>
+              <option value="light">Light</option>
+            </select>
+          </label>
+          <label class="prefs-field">
+            <span>Accent</span>
+            <select id="pref-accent">
+              <option value="green">Green</option>
+              <option value="blue">Blue</option>
+              <option value="purple">Purple</option>
+              <option value="gold">Gold</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section class="prefs-section">
+        <h3>Agent Media Tools <small>(optional)</small></h3>
+        <p class="prefs-hint">Connect a Bearer agent key to see AMT daily usage, credits, and tools. Separate from Codex model usage.</p>
+        <label class="prefs-field">
+          <span>API key</span>
+          <input id="pref-amt-key" type="password" autocomplete="off" spellcheck="false" placeholder="mt_… (stored only on this laptop)">
+        </label>
+        <div class="prefs-row prefs-actions">
+          <button type="button" class="primary" id="pref-amt-save">Save &amp; refresh</button>
+          <button type="button" class="secondary" id="pref-amt-clear">Disconnect</button>
+          <button type="button" class="secondary" id="pref-amt-refresh">Refresh status</button>
+        </div>
+        <div class="prefs-amt-status" id="pref-amt-status" role="status">Not connected</div>
+        <label class="prefs-check">
+          <input type="checkbox" id="pref-amt-tools-enabled">
+          <span>Show AMT tools / allow tool hints in system context</span>
+        </label>
+        <div class="prefs-tools hidden" id="pref-amt-tools">
+          <h4>Tools</h4>
+          <div class="prefs-tools-list" id="pref-amt-tools-list"></div>
+        </div>
+      </section>
+
+      <div class="prefs-footer">
+        <button type="button" class="primary" id="pref-save">Save preferences</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="prefs-modal hidden" id="gallery-modal" role="dialog" aria-modal="true" aria-labelledby="gallery-title">
+    <div class="prefs-dialog gallery-dialog">
+      <button type="button" class="icon-button prefs-close" id="close-gallery" aria-label="Close">×</button>
+      <h2 id="gallery-title">Files &amp; images</h2>
+      <p class="prefs-lede">Recent safe file types from uploads and the current workspace.</p>
+      <div class="gallery-toolbar">
+        <select id="gallery-filter" aria-label="Gallery filter"><option value="all">All files</option><option value="images">Images</option><option value="files">Other files</option></select>
+        <button class="secondary" id="refresh-gallery" type="button">Refresh</button>
+      </div>
+      <div class="gallery-grid" id="gallery-grid"><p class="prefs-hint">Loading…</p></div>
+    </div>
+  </div>
+
+  <script src="/app.js?v=12"></script>
 </body>
 </html>

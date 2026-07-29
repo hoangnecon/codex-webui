@@ -14,8 +14,8 @@ fi
 
 TAILSCALE_IP="$(tailscale ip -4 2>/dev/null | head -n 1)"
 if [[ -z "$TAILSCALE_IP" ]]; then
-  echo "No Tailscale IPv4 address was found." >&2
-  exit 1
+  echo "No Tailscale IPv4 address was found. Falling back to 127.0.0.1 for local-only use." >&2
+  TAILSCALE_IP="127.0.0.1"
 fi
 
 if [[ -t 0 ]]; then
@@ -37,8 +37,11 @@ if [[ "$PASSWORD" != "$CONFIRM" ]]; then
   exit 1
 fi
 
+WORKSPACE_ROOT="${WORKSPACE_ROOT:-$HOME}"
+
 umask 077
-PASSWORD="$PASSWORD" HOST="$TAILSCALE_IP" ROOT="$ROOT" node <<'NODE'
+PASSWORD="$PASSWORD" HOST="$TAILSCALE_IP" ROOT="$ROOT" \
+WORKSPACE_ROOT="$WORKSPACE_ROOT" node <<'NODE'
 const fs = require('node:fs');
 const crypto = require('node:crypto');
 const path = require('node:path');
@@ -47,7 +50,7 @@ const hash = crypto.scryptSync(process.env.PASSWORD, salt, 64).toString('hex');
 const contents = [
   `HOST=${process.env.HOST}`,
   'PORT=4545',
-  'WORKSPACE_ROOT=/home/eric/workspace',
+  `WORKSPACE_ROOT=${process.env.WORKSPACE_ROOT}`,
   'SESSION_HOURS=24',
   `PASSWORD_SALT=${salt}`,
   `PASSWORD_HASH=${hash}`,
@@ -55,6 +58,8 @@ const contents = [
 ].join('\n');
 fs.writeFileSync(path.join(process.env.ROOT, '.env'), contents, { mode: 0o600 });
 NODE
+
+mkdir -p "$ROOT/data/uploads"
 unset PASSWORD CONFIRM
 
 mkdir -p "$SERVICE_DIR"
