@@ -35,6 +35,8 @@ const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 const MAX_ATTACHMENTS = 10;
 const MAX_GALLERY_FILES = 200;
 const MAX_DOWNLOAD_BYTES = 100 * 1024 * 1024;
+const LOCAL_TOOL_BIN = process.env.LOCAL_TOOL_BIN || path.join(WORKSPACE_ROOT, '.local-bin');
+const LOCAL_GH_CONFIG = process.env.GH_CONFIG_DIR || path.join(WORKSPACE_ROOT, '.gh-config');
 const sessions = new Map();
 const loginAttempts = new Map();
 const sseClients = new Set();
@@ -279,10 +281,17 @@ class CodexBridge {
 
   start() {
     return new Promise((resolve, reject) => {
+      const bridgeEnv = { ...process.env };
+      if (fs.existsSync(LOCAL_TOOL_BIN)) {
+        bridgeEnv.PATH = `${LOCAL_TOOL_BIN}${path.delimiter}${bridgeEnv.PATH || ''}`;
+      }
+      if (!bridgeEnv.GH_CONFIG_DIR && fs.existsSync(LOCAL_GH_CONFIG)) {
+        bridgeEnv.GH_CONFIG_DIR = LOCAL_GH_CONFIG;
+      }
       this.proc = spawn('codex', ['app-server'], {
         cwd: WORKSPACE_ROOT,
         stdio: ['pipe', 'pipe', 'pipe'],
-        env: process.env,
+        env: bridgeEnv,
       });
       this.proc.stderr.on('data', (chunk) => console.error(`[codex] ${chunk.toString().trim()}`));
       this.proc.once('error', reject);

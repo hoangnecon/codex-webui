@@ -16,6 +16,14 @@ test('server binds to an explicitly configured host and never exposes App Server
   assert.doesNotMatch(server, /app-server', '--listen'/);
 });
 
+test('workspace-local tools and GitHub CLI auth propagate to Codex sessions', () => {
+  assert.match(server, /LOCAL_TOOL_BIN/);
+  assert.match(server, /LOCAL_GH_CONFIG/);
+  assert.match(server, /bridgeEnv\.PATH/);
+  assert.match(server, /bridgeEnv\.GH_CONFIG_DIR/);
+  assert.match(server, /env: bridgeEnv/);
+});
+
 test('authentication uses a timing-safe password hash and HttpOnly strict cookies', () => {
   assert.match(server, /crypto\.scryptSync/);
   assert.match(server, /crypto\.timingSafeEqual/);
