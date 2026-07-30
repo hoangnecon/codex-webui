@@ -19,8 +19,10 @@ test('server binds to an explicitly configured host and never exposes App Server
 test('workspace-local tools and GitHub CLI auth propagate to Codex sessions', () => {
   assert.match(server, /LOCAL_TOOL_BIN/);
   assert.match(server, /LOCAL_GH_CONFIG/);
+  assert.match(server, /LOCAL_GIT_CONFIG/);
   assert.match(server, /bridgeEnv\.PATH/);
   assert.match(server, /bridgeEnv\.GH_CONFIG_DIR/);
+  assert.match(server, /bridgeEnv\.GIT_CONFIG_GLOBAL/);
   assert.match(server, /env: bridgeEnv/);
 });
 
