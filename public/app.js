@@ -63,6 +63,10 @@ if ($('#composer-form')) {
     running: false,
     streamingNode: null,
     streamingItemId: null,
+    streamingPhase: null,
+    progressGroup: null,
+    progressCount: 0,
+    itemPhases: new Map(),
     pendingAssistantText: '',
     pendingApproval: null,
     threads: [],
@@ -1169,6 +1173,37 @@ if ($('#composer-form')) {
     return body;
   }
 
+  function addProgressUpdate(text = '', streaming = false) {
+    $('#empty-state').classList.add('hidden');
+    $('#conversation').classList.remove('hidden');
+    if (!state.progressGroup?.isConnected) {
+      const details = document.createElement('details');
+      details.className = 'progress-card';
+      const summary = document.createElement('summary');
+      const updates = document.createElement('div');
+      updates.className = 'progress-updates';
+      details.append(summary, updates);
+      $('#conversation').append(details);
+      state.progressGroup = details;
+      state.progressCount = 0;
+    }
+    state.progressCount += 1;
+    state.progressGroup.querySelector('summary').textContent = `Progress · ${state.progressCount} update${state.progressCount === 1 ? '' : 's'}`;
+    const body = document.createElement('div');
+    body.className = 'progress-update';
+    if (streaming) {
+      body.classList.add('streaming');
+      body.textContent = text;
+      state.progressGroup.open = true;
+      state.streamingNode = body;
+    } else {
+      renderMessageContent(body, text);
+    }
+    state.progressGroup.querySelector('.progress-updates').append(body);
+    if (state.followOutput) scrollToLatest();
+    return body;
+  }
+
   function addEvent(title, detail = '') {
     const card = document.createElement('div');
     card.className = 'event-card';
@@ -1262,14 +1297,21 @@ if ($('#composer-form')) {
     conversation.replaceChildren();
     state.streamingNode = null;
     state.streamingItemId = null;
+    state.streamingPhase = null;
+    state.progressGroup = null;
+    state.progressCount = 0;
     const turns = thread.turns || [];
     for (const turn of turns) {
+      state.progressGroup = null;
+      state.progressCount = 0;
       for (const item of turn.items || []) {
         const type = String(item.type || '').toLowerCase();
+        const phase = String(item.phase || '').toLowerCase();
         const text = extractText(item);
         const images = extractImages(item);
         if (!text && !images.length) continue;
         if (type.includes('user')) addMessage('user', text, false, images);
+        else if (phase === 'commentary') addProgressUpdate(text);
         else if (type.includes('agent') || type.includes('assistant') || type === 'message') addMessage('assistant', text, false, images);
       }
     }
@@ -1284,9 +1326,11 @@ if ($('#composer-form')) {
     if (!state.streamingNode) return;
     const live = state.streamingNode.textContent || '';
     renderMessageContent(state.streamingNode, live);
-    if (live.trim()) state.pendingAssistantText = live;
+    if (live.trim() && state.streamingPhase !== 'commentary') state.pendingAssistantText = live;
+    if (state.streamingPhase === 'commentary' && state.progressGroup) state.progressGroup.open = false;
     state.streamingNode = null;
     state.streamingItemId = null;
+    state.streamingPhase = null;
   }
 
   async function resyncThread({ force = false } = {}) {
@@ -1312,7 +1356,8 @@ if ($('#composer-form')) {
       if (lastTurn) {
         for (const item of lastTurn.items || []) {
           const type = String(item.type || '').toLowerCase();
-          if (type.includes('agent') || type.includes('assistant') || type === 'message') {
+          if ((type.includes('agent') || type.includes('assistant') || type === 'message')
+              && String(item.phase || '').toLowerCase() !== 'commentary') {
             const text = extractText(item);
             if (text.length >= currentTurnAssistantLen) {
               currentTurnAssistantLen = text.length;
@@ -1328,7 +1373,8 @@ if ($('#composer-form')) {
 
       if (turnInFlight) {
         // Never rebuild conversation mid-turn — disk lag wiped the optimistic user bubble.
-        if (state.streamingNode && currentTurnAssistantLen > (liveText || '').length + 8) {
+        if (state.streamingNode && state.streamingPhase !== 'commentary'
+            && currentTurnAssistantLen > (liveText || '').length + 8) {
           state.streamingNode.classList.add('streaming');
           // Prefer live SSE text when longer; only pull forward if disk is ahead.
           // (length check above ensures disk is ahead)
@@ -1474,6 +1520,10 @@ if ($('#composer-form')) {
     state.turnId = null;
     state.streamingNode = null;
     state.streamingItemId = null;
+    state.streamingPhase = null;
+    state.progressGroup = null;
+    state.progressCount = 0;
+    state.itemPhases.clear();
     state.pendingAssistantText = '';
     state.awaitingTurn = false;
     state.historyFingerprint = '';
@@ -1627,6 +1677,10 @@ if ($('#composer-form')) {
       state.awaitingTurn = true;
       state.streamingNode = null;
       state.streamingItemId = null;
+      state.streamingPhase = null;
+      state.progressGroup = null;
+      state.progressCount = 0;
+      state.itemPhases.clear();
       clearCatchupTimers();
       startResyncLoop();
       setTimeout(() => resyncThread({ force: false }), 1200);
@@ -1742,6 +1796,9 @@ if ($('#composer-form')) {
       state.turnId = params.turn?.id || params.turnId;
       setRunning(true);
       state.awaitingTurn = true;
+      state.progressGroup = null;
+      state.progressCount = 0;
+      state.itemPhases.clear();
       resetActivity({ preservePlan: false });
       startResyncLoop();
       updateActivity(`turn-${state.turnId}`, { title: 'Turn started', detail: 'Codex is analyzing your request.', kind: 'reasoning', status: 'running' });
@@ -1749,18 +1806,27 @@ if ($('#composer-form')) {
       setRunning(true);
       state.awaitingTurn = true;
       const itemId = params.itemId || params.item?.id || null;
+      const phase = String(params.phase || params.item?.phase || state.itemPhases.get(itemId) || 'final_answer').toLowerCase();
       if (state.streamingNode && itemId && state.streamingItemId && itemId !== state.streamingItemId) {
         finalizeStreamingMessage();
       }
-      if (!state.streamingNode) addMessage('assistant', '', true);
+      if (!state.streamingNode) {
+        state.streamingPhase = phase;
+        if (phase === 'commentary') addProgressUpdate('', true);
+        else {
+          if (state.progressGroup) state.progressGroup.open = false;
+          addMessage('assistant', '', true);
+        }
+      }
       if (itemId) state.streamingItemId = itemId;
       state.streamingNode.textContent += params.delta || '';
-      state.pendingAssistantText = state.streamingNode.textContent;
+      if (phase !== 'commentary') state.pendingAssistantText = state.streamingNode.textContent;
       if (state.followOutput) scrollToLatest();
     } else if (method === 'item/started') {
       setRunning(true);
       const item = params.item || {};
       const type = String(item.type || '').toLowerCase();
+      if (item.id) state.itemPhases.set(item.id, String(item.phase || '').toLowerCase());
       if ((type.includes('agentmessage') || type.includes('assistant'))
           && state.streamingNode && item.id && state.streamingItemId && item.id !== state.streamingItemId) {
         finalizeStreamingMessage();
@@ -1770,6 +1836,7 @@ if ($('#composer-form')) {
       const item = params.item || {};
       renderActivityItem(item, true);
       const type = String(item.type || '').toLowerCase();
+      const phase = String(item.phase || state.itemPhases.get(item.id) || '').toLowerCase();
       if ((type.includes('agentmessage') || type.includes('assistant')) && state.streamingNode
           && (!item.id || !state.streamingItemId || item.id === state.streamingItemId)) {
         const text = extractText(item);
@@ -1777,7 +1844,10 @@ if ($('#composer-form')) {
         finalizeStreamingMessage();
       } else if ((type.includes('agentmessage') || type.includes('assistant')) && !state.streamingNode) {
         const text = extractText(item);
-        if (text) addMessage('assistant', text);
+        if (text) {
+          if (phase === 'commentary') addProgressUpdate(text);
+          else addMessage('assistant', text);
+        }
       }
     } else if (method === 'turn/completed') {
       markTurnComplete(params);

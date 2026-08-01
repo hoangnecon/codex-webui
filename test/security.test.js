@@ -261,6 +261,15 @@ test('live assistant items keep the same message boundaries as refreshed history
   assert.match(app, /item\.id === state\.streamingItemId/);
 });
 
+test('commentary is grouped into one progress card instead of normal chat bubbles', () => {
+  const css = fs.readFileSync(path.join(root, 'public/app.css'), 'utf8');
+  assert.match(app, /phase === 'commentary'/);
+  assert.match(app, /function addProgressUpdate/);
+  assert.match(app, /Progress · \$\{state\.progressCount\}/);
+  assert.match(app, /state\.streamingPhase !== 'commentary'/);
+  assert.match(css, /\.progress-card/);
+});
+
 test('execution plans remain legible and survive history resyncs for the full turn', () => {
   const css = fs.readFileSync(path.join(root, 'public/app.css'), 'utf8');
   assert.match(html, /Execution plan/);
