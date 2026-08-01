@@ -254,6 +254,13 @@ test('routine command, reasoning, and file activity never spam the chat transcri
   assert.match(app, /addMessage\('assistant'/);
 });
 
+test('live assistant items keep the same message boundaries as refreshed history', () => {
+  assert.match(app, /streamingItemId/);
+  assert.match(app, /itemId !== state\.streamingItemId/);
+  assert.match(app, /finalizeStreamingMessage\(\)/);
+  assert.match(app, /item\.id === state\.streamingItemId/);
+});
+
 test('execution plans remain legible and survive history resyncs for the full turn', () => {
   const css = fs.readFileSync(path.join(root, 'public/app.css'), 'utf8');
   assert.match(html, /Execution plan/);

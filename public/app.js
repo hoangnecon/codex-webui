@@ -62,6 +62,7 @@ if ($('#composer-form')) {
     cwd: null,
     running: false,
     streamingNode: null,
+    streamingItemId: null,
     pendingAssistantText: '',
     pendingApproval: null,
     threads: [],
@@ -1260,6 +1261,7 @@ if ($('#composer-form')) {
     const conversation = $('#conversation');
     conversation.replaceChildren();
     state.streamingNode = null;
+    state.streamingItemId = null;
     const turns = thread.turns || [];
     for (const turn of turns) {
       for (const item of turn.items || []) {
@@ -1284,6 +1286,7 @@ if ($('#composer-form')) {
     renderMessageContent(state.streamingNode, live);
     if (live.trim()) state.pendingAssistantText = live;
     state.streamingNode = null;
+    state.streamingItemId = null;
   }
 
   async function resyncThread({ force = false } = {}) {
@@ -1470,6 +1473,7 @@ if ($('#composer-form')) {
     localStorage.removeItem('codex-webui-active-thread');
     state.turnId = null;
     state.streamingNode = null;
+    state.streamingItemId = null;
     state.pendingAssistantText = '';
     state.awaitingTurn = false;
     state.historyFingerprint = '';
@@ -1622,6 +1626,7 @@ if ($('#composer-form')) {
       setRunning(true);
       state.awaitingTurn = true;
       state.streamingNode = null;
+      state.streamingItemId = null;
       clearCatchupTimers();
       startResyncLoop();
       setTimeout(() => resyncThread({ force: false }), 1200);
@@ -1743,19 +1748,34 @@ if ($('#composer-form')) {
     } else if (method === 'item/agentMessage/delta') {
       setRunning(true);
       state.awaitingTurn = true;
+      const itemId = params.itemId || params.item?.id || null;
+      if (state.streamingNode && itemId && state.streamingItemId && itemId !== state.streamingItemId) {
+        finalizeStreamingMessage();
+      }
       if (!state.streamingNode) addMessage('assistant', '', true);
+      if (itemId) state.streamingItemId = itemId;
       state.streamingNode.textContent += params.delta || '';
       state.pendingAssistantText = state.streamingNode.textContent;
       if (state.followOutput) scrollToLatest();
     } else if (method === 'item/started') {
       setRunning(true);
       const item = params.item || {};
+      const type = String(item.type || '').toLowerCase();
+      if ((type.includes('agentmessage') || type.includes('assistant'))
+          && state.streamingNode && item.id && state.streamingItemId && item.id !== state.streamingItemId) {
+        finalizeStreamingMessage();
+      }
       renderActivityItem(item, false);
     } else if (method === 'item/completed') {
       const item = params.item || {};
       renderActivityItem(item, true);
       const type = String(item.type || '').toLowerCase();
-      if ((type.includes('agentmessage') || type.includes('assistant')) && !state.streamingNode) {
+      if ((type.includes('agentmessage') || type.includes('assistant')) && state.streamingNode
+          && (!item.id || !state.streamingItemId || item.id === state.streamingItemId)) {
+        const text = extractText(item);
+        if (text && text.length > state.streamingNode.textContent.length) state.streamingNode.textContent = text;
+        finalizeStreamingMessage();
+      } else if ((type.includes('agentmessage') || type.includes('assistant')) && !state.streamingNode) {
         const text = extractText(item);
         if (text) addMessage('assistant', text);
       }
