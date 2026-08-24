@@ -2,6 +2,7 @@
 node_modules/
 protocol/
 data/amt.json
+data/auth-sessions.json
 data/uploads/
 *.log
 .DS_Store

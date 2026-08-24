@@ -32,6 +32,13 @@ test('authentication uses a timing-safe password hash and HttpOnly strict cookie
   assert.match(server, /HttpOnly; SameSite=Strict/);
 });
 
+test('hashed login sessions persist across service restarts', () => {
+  assert.match(server, /auth-sessions\.json/);
+  assert.match(server, /createHash\('sha256'\)/);
+  assert.match(server, /function loadSessions\(\)/);
+  assert.match(server, /function saveSessions\(\)/);
+});
+
 test('state-changing requests enforce same-origin checks', () => {
   assert.match(server, /function sameOrigin/);
   assert.match(server, /Origin rejected/);
