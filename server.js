@@ -145,6 +145,11 @@ async function readJson(req, limit = 1024 * 1024) {
 function sameOrigin(req) {
   if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return true;
   const origin = req.headers.origin;
+  if (!origin) return true;
+  const hostHeader = req.headers.host;
+  if (hostHeader && (origin === `http://${hostHeader}` || origin === `https://${hostHeader}`)) {
+    return true;
+  }
   return origin === `http://${HOST}:${PORT}` || origin === `https://${HOST}:${PORT}`;
 }
 
