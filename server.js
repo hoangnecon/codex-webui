@@ -245,7 +245,9 @@ function allowedImage(input) {
   let resolved;
   try { resolved = fs.realpathSync(input); }
   catch { throw Object.assign(new Error('Image does not exist'), { status: 404 }); }
-  const allowedRoots = [WORKSPACE_ROOT, UPLOAD_ROOT].map((root) => fs.realpathSync(root));
+  const allowedRoots = [WORKSPACE_ROOT, UPLOAD_ROOT, os.tmpdir(), '/tmp', '/private/tmp']
+    .filter((r) => fs.existsSync(r))
+    .map((root) => fs.realpathSync(root));
   if (!allowedRoots.some((root) => resolved === root || resolved.startsWith(`${root}${path.sep}`))) {
     throw Object.assign(new Error('Image is outside the allowed workspace'), { status: 403 });
   }
